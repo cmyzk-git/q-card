@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QCard Pro</title>
+    <title>Qcard PRO</title>
     <style>
         :root {
             --bg: #0f1117;
@@ -473,9 +473,28 @@
         }
         #overlay-edit:focus { border-color: var(--accent); }
 
-        #overlay.edit-mode #overlay-text { display: none; }
-        #overlay.edit-mode #overlay-edit { display: block; }
-        #overlay.edit-mode #speech-bar   { display: none; }
+        #overlay-title-edit {
+            display: none;
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface2);
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            padding: 6px 10px;
+            outline: none;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+        #overlay-title-edit:focus { border-color: var(--accent); }
+
+        #overlay.edit-mode #overlay-title   { display: none; }
+        #overlay.edit-mode #overlay-title-edit { display: block; }
+        #overlay.edit-mode #overlay-text    { display: none; }
+        #overlay.edit-mode #overlay-edit    { display: block; }
+        #overlay.edit-mode #speech-bar      { display: none; }
 
         #speech-bar {
             position: sticky;
@@ -743,7 +762,7 @@
 <body>
 <!-- TOP BAR -->
 <div class="top-bar">
-    <div class="app-logo">QCARD PRO</div>
+    <div class="app-logo">Qcard PRO</div>
     <div class="divider"></div>
 
     <div class="ctrl-group">
@@ -816,6 +835,7 @@
     <button id="edit-mode-btn" onclick="toggleEditMode()" title="編集モード">✏️</button>
     <div id="overlay-title"></div>
     <div id="overlay-text"></div>
+    <input type="text" id="overlay-title-edit" placeholder="タイトルを編集...">
     <textarea id="overlay-edit" placeholder="内容を編集..."></textarea>
     <div id="speech-bar">
         <button class="speech-btn" id="speech-play-btn"  onclick="speechPlay()"  title="再生">▶</button>
@@ -828,6 +848,8 @@
             <option value="1.0" selected>1.0x</option>
             <option value="1.2">1.2x</option>
             <option value="1.5">1.5x</option>
+            <option value="1.7">1.7x</option>
+            <option value="2.0">2.0x</option>
         </select>
     </div>
 </div>
@@ -1419,7 +1441,7 @@ function exportJSON() {
         [JSON.stringify({ scenarios: scenarios, activeId: activeScenarioId }, null, 2)],
         { type: 'application/json' }
     );
-    downloadBlob(blob, 'Qcard_' + today() + '.json');
+    downloadBlob(blob, 'kampe_' + today() + '.json');
     showToast('JSONをエクスポート');
     closeDataModal();
 }
@@ -1439,7 +1461,7 @@ function exportCSV() {
     var csv = rows.map(function(r){ return r.join(','); }).join(CRLF);
     var BOM = '\uFEFF';
     var blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
-    downloadBlob(blob, 'Qcard_' + today() + '.csv');
+    downloadBlob(blob, 'kampe_' + today() + '.csv');
     showToast('CSVをエクスポート');
     closeDataModal();
 }
@@ -1691,33 +1713,51 @@ function toggleEditMode() {
 function enterEditMode() {
     if (!editCardItem) return;
     isEditMode = true;
+    var titleInput   = document.getElementById('overlay-title-edit');
     var editTextarea = document.getElementById('overlay-edit');
     var btn          = document.getElementById('edit-mode-btn');
-    // 現在のcontentTextareaの値を編集欄にセット
+
+    // タイトル欄
+    var titleTA = editCardItem.querySelector('.title-input');
+    titleInput.value = titleTA ? titleTA.value : overlayTitle.innerText;
+    titleInput.oninput = function() {
+        if (!editCardItem) return;
+        var t = editCardItem.querySelector('.title-input');
+        if (t) {
+            t.value = titleInput.value;
+            overlayTitle.innerText = titleInput.value;
+            overlayTitle.style.display = titleInput.value.trim() ? 'block' : 'none';
+            saveCurrentGridData();
+        }
+    };
+
+    // 本文欄
     var contentTA = editCardItem.querySelector('.content-textarea');
-    editTextarea.value     = contentTA ? contentTA.value : overlayText.innerText;
+    editTextarea.value = contentTA ? contentTA.value : overlayText.innerText;
     editTextarea.style.fontSize = currentFontSize + 'px';
-    overlay.classList.add('edit-mode');
-    btn.classList.add('active');
-    btn.title = '表示モードに戻る (Esc)';
-    // 入力のたびにリアルタイム保存＆表示更新
     editTextarea.oninput = function() {
         if (!editCardItem) return;
-        var contentTA2 = editCardItem.querySelector('.content-textarea');
-        if (contentTA2) {
-            contentTA2.value = editTextarea.value;
+        var c = editCardItem.querySelector('.content-textarea');
+        if (c) {
+            c.value = editTextarea.value;
             overlayText.innerText = editTextarea.value;
             saveCurrentGridData();
         }
     };
-    setTimeout(function(){ editTextarea.focus(); }, 50);
+
+    overlay.classList.add('edit-mode');
+    btn.classList.add('active');
+    btn.title = '表示モードに戻る (Esc)';
+    setTimeout(function(){ titleInput.focus(); }, 50);
 }
 
 function exitEditMode() {
     if (!isEditMode) return;
     isEditMode = false;
+    var titleInput   = document.getElementById('overlay-title-edit');
     var editTextarea = document.getElementById('overlay-edit');
     var btn          = document.getElementById('edit-mode-btn');
+    if (titleInput)   titleInput.oninput   = null;
     if (editTextarea) editTextarea.oninput = null;
     overlay.classList.remove('edit-mode');
     if (btn) {
