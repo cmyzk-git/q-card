@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q-Card Pro</title>
+    <title>QCard Pro</title>
     <style>
         :root {
             --bg: #0f1117;
@@ -743,7 +743,7 @@
 <body>
 <!-- TOP BAR -->
 <div class="top-bar">
-    <div class="app-logo">KAMPE PRO</div>
+    <div class="app-logo">QCARD PRO</div>
     <div class="divider"></div>
 
     <div class="ctrl-group">
@@ -1419,7 +1419,7 @@ function exportJSON() {
         [JSON.stringify({ scenarios: scenarios, activeId: activeScenarioId }, null, 2)],
         { type: 'application/json' }
     );
-    downloadBlob(blob, 'kampe_' + today() + '.json');
+    downloadBlob(blob, 'Qcard_' + today() + '.json');
     showToast('JSONをエクスポート');
     closeDataModal();
 }
@@ -1439,7 +1439,7 @@ function exportCSV() {
     var csv = rows.map(function(r){ return r.join(','); }).join(CRLF);
     var BOM = '\uFEFF';
     var blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
-    downloadBlob(blob, 'kampe_' + today() + '.csv');
+    downloadBlob(blob, 'Qcard_' + today() + '.csv');
     showToast('CSVをエクスポート');
     closeDataModal();
 }
