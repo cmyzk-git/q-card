@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カンペツール Pro</title>
+    <title>Q-Card Pro</title>
     <style>
         :root {
             --bg: #0f1117;
@@ -380,6 +380,30 @@
             display: none;
             z-index: 500;
             overflow-y: auto;
+            cursor: default;
+        }
+
+        #overlay-drag-handle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 36px;
+            cursor: move;
+            z-index: 5;
+            border-radius: 16px 16px 0 0;
+        }
+
+        #overlay-drag-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
         }
 
         #overlay::-webkit-scrollbar { width: 8px; }
@@ -787,6 +811,7 @@
 <!-- OVERLAY -->
 <div id="overlay-backdrop" onclick="handleBackdropClick()"></div>
 <div id="overlay">
+    <div id="overlay-drag-handle"></div>
     <span id="close-btn" onclick="hideOverlay()">×</span>
     <button id="edit-mode-btn" onclick="toggleEditMode()" title="編集モード">✏️</button>
     <div id="overlay-title"></div>
@@ -1170,13 +1195,13 @@ function createItem(index, d) {
     contentTextarea.value       = d.content;
     contentTextarea.addEventListener('mousedown', function(e){ e.stopPropagation(); });
 
-    item.addEventListener('mouseenter', (function(t, c) {
+    item.addEventListener('mouseenter', (function(t, c, it) {
         return function() {
             if (isLocked) return;
             clearTimeout(hideTimeout);
-            showOverlay(t.value, c.value);
+            showOverlay(t.value, c.value, it);
         };
-    })(titleInput, contentTextarea));
+    })(titleInput, contentTextarea, item));
 
     item.addEventListener('mouseleave', function() {
         if (isLocked) return;
@@ -1222,6 +1247,12 @@ function showOverlay(title, text, cardItem) {
     overlayText.innerText  = text;
     overlayText.style.fontSize = currentFontSize + 'px';
     overlay.style.display  = 'block';
+    // 初回表示時のみ中央にリセット
+    if (!overlay.dataset.dragged) {
+        overlay.style.transform = 'translate(-50%, -50%)';
+        overlay.style.top  = '50%';
+        overlay.style.left = '50%';
+    }
     if (isLocked) {
         backdrop.style.display = 'block';
         grid.classList.add('dimmed');
@@ -1790,6 +1821,39 @@ function speechReset() {
     var el = speechGetElements();
     if (el.status) el.status.innerText = '';
 }
+
+// ===== OVERLAY DRAG =====
+(function initOverlayDrag() {
+    var handle   = document.getElementById('overlay-drag-handle');
+    var ox = 0, oy = 0, startX = 0, startY = 0, dragging = false;
+
+    handle.addEventListener('mousedown', function(e) {
+        // transform を解除して実px座標に変換
+        var rect = overlay.getBoundingClientRect();
+        overlay.style.transform = 'none';
+        overlay.style.left = rect.left + 'px';
+        overlay.style.top  = rect.top  + 'px';
+        overlay.dataset.dragged = '1';
+
+        ox = rect.left; oy = rect.top;
+        startX = e.clientX; startY = e.clientY;
+        dragging = true;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var nx = ox + e.clientX - startX;
+        var ny = oy + e.clientY - startY;
+        // 画面外に出ないよう制限
+        nx = Math.max(0, Math.min(window.innerWidth  - overlay.offsetWidth,  nx));
+        ny = Math.max(0, Math.min(window.innerHeight - overlay.offsetHeight, ny));
+        overlay.style.left = nx + 'px';
+        overlay.style.top  = ny + 'px';
+    });
+
+    document.addEventListener('mouseup', function() { dragging = false; });
+})();
 
 setTimer(60);
 
