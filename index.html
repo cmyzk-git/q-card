@@ -473,7 +473,8 @@
             outline: none;
             box-sizing: border-box;
             margin-bottom: 8px;
-            min-height: 120px;
+            min-height: 0;        /* ← flex:1 で伸びるのでmin-heightは0に */
+   　　　　　height: 100%;         /* ← 追加 */
         }
         #overlay-edit:focus { border-color: var(--accent); }
 
