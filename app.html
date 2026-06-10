@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qcard PRO</title>
+</head>
+<body>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const SUPABASE_URL = 'https://jysidnrpuaixcorryjbo.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw'
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) {
+  window.location.href = '/login.html'
+} else {
+  document.getElementById('loading').style.display = 'none'
+  document.getElementById('app-container').style.display = 'block'
+}
+</script>
+
+<div id="loading" style="
+  position:fixed;inset:0;background:#080c14;
+  display:flex;align-items:center;justify-content:center;
+  color:#3d8bff;font-family:sans-serif;font-size:1rem;">
+  読み込み中...
+</div>
+
+<div id="app-container" style="display:none;width:100%;height:100vh;">
+  <!-- ここにQcard PROのアプリ本体を後で埋め込みます -->
+  <p style="color:white;padding:40px;">✅ 認証成功！アプリ本体をここに配置します。</p>
+</div>
+</body>
+</html>

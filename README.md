@@ -1,2 +1,5 @@
 # self-app-index.html
 商談PRO
+
+NEXT_PUBLIC_SUPABASE_URL=https://jysidnrpuaixcorryjbo.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw

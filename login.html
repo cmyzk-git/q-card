@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ログイン — Qcard PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #080c14;
+  color: #d8e4f8;
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card {
+  background: #0e1525;
+  border: 1px solid #1f2e4a;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3d8bff, #6c63ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #5a7299;
+  margin-bottom: 32px;
+}
+.tabs {
+  display: flex;
+  background: #141d30;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 24px;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #5a7299;
+  transition: all 0.15s;
+}
+.tab.active {
+  background: #1a2540;
+  color: #d8e4f8;
+}
+label {
+  display: block;
+  font-size: 0.72rem;
+  color: #5a7299;
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+input {
+  width: 100%;
+  background: #141d30;
+  border: 1px solid #1f2e4a;
+  border-radius: 8px;
+  color: #d8e4f8;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus { border-color: #3d8bff; }
+.btn {
+  width: 100%;
+  background: #3d8bff;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 24px;
+  transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.message {
+  text-align: center;
+  font-size: 0.75rem;
+  margin-top: 16px;
+  min-height: 20px;
+  color: #2dd4a4;
+}
+.message.error { color: #f2526a; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Qcard PRO</div>
+  <div class="subtitle">アカウントにログイン</div>
+  <div class="tabs">
+    <div class="tab active" id="tab-login" onclick="switchTab('login')">ログイン</div>
+    <div class="tab" id="tab-signup" onclick="switchTab('signup')">新規登録</div>
+  </div>
+  <div id="form-area">
+    <label>メールアドレス</label>
+    <input type="email" id="email" placeholder="example@email.com">
+    <label>パスワード</label>
+    <input type="password" id="password" placeholder="8文字以上">
+    <button class="btn" onclick="handleAuth()">ログイン</button>
+  </div>
+  <div class="message" id="message"></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const SUPABASE_URL  = 'https://jysidnrpuaixcorryjbo.supabase.co'
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw'
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+let mode = 'login'
+
+window.switchTab = function(m) {
+  mode = m
+  document.getElementById('tab-login').className  = 'tab' + (m === 'login'  ? ' active' : '')
+  document.getElementById('tab-signup').className = 'tab' + (m === 'signup' ? ' active' : '')
+  document.querySelector('.btn').textContent = m === 'login' ? 'ログイン' : '新規登録'
+  document.getElementById('message').textContent = ''
+}
+
+window.handleAuth = async function() {
+  const email    = document.getElementById('email').value.trim()
+  const password = document.getElementById('password').value
+  const msg      = document.getElementById('message')
+  msg.className  = 'message'
+  msg.textContent = '処理中...'
+
+  if (mode === 'login') {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) { msg.className = 'message error'; msg.textContent = 'ログイン失敗：' + error.message; return; }
+    window.location.href = '/app.html'
+  } else {
+    const { error } = await supabase.auth.signUp({ email, password })
+    if (error) { msg.className = 'message error'; msg.textContent = '登録失敗：' + error.message; return; }
+    msg.textContent = '確認メールを送信しました。メールを確認してください。'
+  }
+}
+</script>
+</body>
+</html>
