@@ -6,7 +6,11 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('STRIPE_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('PRICE_ID:', process.env.STRIPE_PRICE_ID);
+
     const { user_id, email } = req.body;
+    console.log('user_id:', user_id, 'email:', email);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -23,6 +27,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ url: session.url });
   } catch (err) {
+    console.error('Stripe error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
