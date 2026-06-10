@@ -9,17 +9,27 @@
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL = 'https://jysidnrpuaixcorryjbo.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw'
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+const supabase = createClient(
+  'https://jysidnrpuaixcorryjbo.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw'
+)
 
 const { data: { session } } = await supabase.auth.getSession()
-if (!session) {
-  window.location.href = '/login.html'
-} else {
-  document.getElementById('loading').style.display = 'none'
-  document.getElementById('app-container').style.display = 'block'
+if (!session) { window.location.href = '/login.html'; throw '' }
+
+const { data: sub } = await supabase
+  .from('subscribers')
+  .select('stripe_subscription_status')
+  .eq('user_id', session.user.id)
+  .single()
+
+if (!sub || sub.stripe_subscription_status !== 'active') {
+  window.location.href = '/subscribe.html'
+  throw ''
 }
+
+document.getElementById('loading').style.display = 'none'
+document.getElementById('app-container').style.display = 'block'
 </script>
 
 <div id="loading" style="
@@ -33,7 +43,6 @@ if (!session) {
 </div>
 
 <script>
-// Qcard PROアプリ本体をiframeで読み込む
 const container = document.getElementById('app-container')
 const iframe = document.createElement('iframe')
 iframe.src = '/qcard_pro_v2.2.1.html'
