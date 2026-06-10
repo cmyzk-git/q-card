@@ -30,8 +30,15 @@ if (!session) {
 </div>
 
 <div id="app-container" style="display:none;width:100%;height:100vh;">
-  <!-- ここにQcard PROのアプリ本体を後で埋め込みます -->
-  <p style="color:white;padding:40px;">✅ 認証成功！アプリ本体をここに配置します。</p>
 </div>
+
+<script>
+// Qcard PROアプリ本体をiframeで読み込む
+const container = document.getElementById('app-container')
+const iframe = document.createElement('iframe')
+iframe.src = '/qcard_pro_v2.2.1.html'
+iframe.style.cssText = 'width:100%;height:100vh;border:none;'
+container.appendChild(iframe)
+</script>
 </body>
 </html>
