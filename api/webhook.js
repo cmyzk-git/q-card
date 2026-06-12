@@ -39,12 +39,13 @@ module.exports = async (req, res) => {
     const user_id = session.metadata.user_id;
     const customer_id = session.customer;
 
-    await supabase.from('subscribers').upsert({
+ const { data, error } = await supabase.from('subscribers').upsert({
       user_id,
       stripe_customer_id: customer_id,
       stripe_subscription_status: 'active',
     }, { onConflict: 'user_id' });
-  }
+    
+    console.log('upsert result:', JSON.stringify(data), JSON.stringify(error));
 
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object;
