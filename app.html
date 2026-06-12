@@ -21,7 +21,7 @@ const { data: sub } = await supabase
   .from('subscribers')
   .select('stripe_subscription_status')
   .eq('user_id', session.user.id)
-  .single()
+  .maybeSingle()
 
 if (!sub || sub.stripe_subscription_status !== 'active') {
   window.location.href = '/subscribe.html'
