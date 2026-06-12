@@ -150,7 +150,7 @@ window.handleAuth = async function() {
   if (mode === 'login') {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { msg.className = 'message error'; msg.textContent = 'ログイン失敗：' + error.message; return; }
-    window.location.href = '/subscribe.html'
+    window.location.href = 'https://q-card-woad.vercel.app/subscribe.html'
   } else {
     const { error } = await supabase.auth.signUp({ email, password })
     if (error) { msg.className = 'message error'; msg.textContent = '登録失敗：' + error.message; return; }
