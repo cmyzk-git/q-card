@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qcard PRO</title>
+</head>
+<body>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabase = createClient(
+  'https://jysidnrpuaixcorryjbo.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5c2lkbnJwdWFpeGNvcnJ5amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzU2OTksImV4cCI6MjA5NjYxMTY5OX0.ESlYEXiakEicTdWpwOh0q4UYVefRzWrjo_HGjxjwjGw'
+)
+
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = '/login.html'; throw '' }
+
+const { data: sub } = await supabase
+  .from('subscribers')
+  .select('stripe_subscription_status')
+  .eq('user_id', session.user.id)
+  .maybeSingle()
+
+if (!sub || sub.stripe_subscription_status !== 'active') {
+  window.location.href = '/subscribe.html'
+  throw ''
+}
+
+document.getElementById('loading').style.display = 'none'
+document.getElementById('app-container').style.display = 'block'
+</script>
+
+<div id="loading" style="
+  position:fixed;inset:0;background:#080c14;
+  display:flex;align-items:center;justify-content:center;
+  color:#3d8bff;font-family:sans-serif;font-size:1rem;">
+  読み込み中...
+</div>
+
+<div id="app-container" style="display:none;width:100%;height:100vh;">
+</div>
+
+<script>
+const container = document.getElementById('app-container')
+const iframe = document.createElement('iframe')
+iframe.src = '/qcard_pro_v2_2_1a.html'
+iframe.style.cssText = 'width:100%;height:100vh;border:none;'
+container.appendChild(iframe)
+</script>
+</body>
+</html>
