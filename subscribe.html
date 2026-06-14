@@ -149,7 +149,7 @@ const { data: sub } = await supabase
   .maybeSingle()
 
 if (sub && sub.stripe_subscription_status === 'active') {
-  window.location.href = 'https://q-card-woad.vercel.app/app.html'
+  window.location.href 
 }
 
 window.startCheckout = async function() {

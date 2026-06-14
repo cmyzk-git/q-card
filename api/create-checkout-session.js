@@ -23,8 +23,10 @@ module.exports = async (req, res) => {
       line_items: [{ price, quantity: 1 }],
       customer_email: email,
       metadata: { user_id },
-      success_url: 'https://q-card-woad.vercel.app/app.html?success=true',
-      cancel_url: 'https://q-card-woad.vercel.app/subscribe.html?canceled=true',
+      success_url:
+`${req.headers.origin}/app.html?success=true`
+      cancel_url:
+`${req.headers.origin}/subscribe.html?canceled=true`,
     });
 
     res.status(200).json({ url: session.url });
