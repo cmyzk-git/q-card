@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>画面キャプチャ検証</title>
+<style>
+body { background: #080c14; color: white; font-family: sans-serif; padding: 20px; }
+
+#pip-window {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  width: 320px; height: 180px;
+  border: 2px solid #3d8bff;
+  border-radius: 8px;
+  overflow: visible;
+  background: #000;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+#pip-window.minimized {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+#pip-window.minimized #pip-icon { display: flex; }
+#pip-window.minimized canvas { display: none; }
+#pip-window.minimized .resize-handle { display: none; }
+#pip-window.minimized #pip-close { display: none; }
+#pip-window.minimized #pip-controls { display: none; }
+
+#pip-icon {
+  display: none;
+  width: 100%; height: 100%;
+  align-items: center; justify-content: center;
+  font-size: 1.6rem;
+  background: #1a2540;
+  border-radius: 50%;
+}
+
+/* キャンバス（映像表示） */
+#pip-canvas {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  display: block;
+  cursor: grab;
+}
+#pip-canvas.panning { cursor: grabbing; }
+
+/* リサイズハンドル */
+.resize-handle {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: #3d8bff;
+  border-radius: 2px;
+  z-index: 10000;
+}
+.resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+.resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+.resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+.resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+
+/* コントロールバー */
+#pip-controls {
+  position: absolute;
+  bottom: -36px; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0e1525;
+  border: 1px solid #1f2e4a;
+  border-radius: 0 0 8px 8px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  color: #5a7299;
+}
+#pip-controls input[type=range] {
+  width: 80px;
+  accent-color: #3d8bff;
+}
+#pip-controls span { color: #3d8bff; font-weight: 700; min-width: 30px; }
+
+/* 閉じるボタン */
+#pip-close {
+  position: absolute;
+  top: -10px; right: -10px;
+  width: 22px; height: 22px;
+  background: #f2526a;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: white;
+  cursor: pointer; z-index: 10001;
+}
+
+/* リセットボタン */
+#pip-reset {
+  position: absolute;
+  top: -10px; left: -10px;
+  width: 22px; height: 22px;
+  background: #2dd4a4;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; color: white;
+  cursor: pointer; z-index: 10001;
+  title: "表示位置をリセット";
+}
+
+button {
+  background: #3d8bff; border: none; color: white;
+  padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  font-size: 1rem; margin: 10px;
+}
+.hint { font-size: 0.8rem; color: #5a7299; margin-top: 16px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<h2>画面キャプチャ検証 — パン＆ズーム</h2>
+<button onclick="startCapture()">📷 キャプチャ開始</button>
+<button onclick="stopCapture()">⏹ 停止</button>
+<div class="hint">
+  💡 <strong>移動：</strong>枠をドラッグ<br>
+  💡 <strong>パン：</strong>映像内をドラッグして見たい部分を中心に<br>
+  💡 <strong>ズーム：</strong>下のスライダーまたはホイール<br>
+  💡 <strong>リサイズ：</strong>四隅のハンドルをドラッグ<br>
+  💡 <strong>最小化：</strong>ダブルクリック
+</div>
+
+<div id="pip-window" style="display:none">
+  <canvas id="pip-canvas"></canvas>
+  <div id="pip-icon">📷</div>
+  <div id="pip-close" onclick="stopCapture()">✕</div>
+  <div id="pip-reset" onclick="resetView()" title="表示位置リセット">⌖</div>
+  <div class="resize-handle nw" data-dir="nw"></div>
+  <div class="resize-handle ne" data-dir="ne"></div>
+  <div class="resize-handle sw" data-dir="sw"></div>
+  <div class="resize-handle se" data-dir="se"></div>
+  <div id="pip-controls">
+    🔍 ズーム
+    <input type="range" id="zoom-slider" min="50" max="300" value="100" oninput="onZoomSlider(this.value)">
+    <span id="zoom-label">100%</span>
+    <span style="margin-left:auto;color:#3d5278;">ホイールでもズーム可</span>
+  </div>
+</div>
+
+<video id="hidden-video" autoplay muted style="display:none"></video>
+
+<script>
+let stream = null;
+const pip    = document.getElementById('pip-window');
+const canvas = document.getElementById('pip-canvas');
+const ctx    = canvas.getContext('2d');
+const video  = document.getElementById('hidden-video');
+
+// ===== パン・ズーム状態 =====
+let zoom    = 1.0;
+let panX    = 0;
+let panY    = 0;
+let rafId   = null;
+
+// ===== キャプチャ =====
+async function startCapture() {
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    pip.style.display = 'block';
+    pip.style.right = '20px';
+    pip.style.bottom = '56px';
+    pip.style.left = 'auto';
+    pip.style.top = 'auto';
+    pip.style.width = '320px';
+    pip.style.height = '180px';
+    pip.classList.remove('minimized');
+    resetView();
+    startRender();
+    stream.getVideoTracks()[0].onended = stopCapture;
+  } catch(e) {
+    alert('エラー: ' + e.message);
+  }
+}
+
+function stopCapture() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  cancelAnimationFrame(rafId);
+  pip.style.display = 'none';
+}
+
+// ===== 描画ループ =====
+function startRender() {
+  function render() {
+    if (!stream) return;
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    canvas.width  = w;
+    canvas.height = h;
+
+    const vw = video.videoWidth  || 1;
+    const vh = video.videoHeight || 1;
+
+    // ズームと中心を基準に描画
+    const drawW = vw * zoom;
+    const drawH = vh * zoom;
+    const sx = (vw / 2 + panX) - (w / zoom / 2);
+    const sy = (vh / 2 + panY) - (h / zoom / 2);
+    const sw = w / zoom;
+    const sh = h / zoom;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(video, 
+      Math.max(0, sx), Math.max(0, sy),
+      Math.min(sw, vw - Math.max(0, sx)),
+      Math.min(sh, vh - Math.max(0, sy)),
+      0, 0, w, h
+    );
+
+    rafId = requestAnimationFrame(render);
+  }
+  render();
+}
+
+function resetView() {
+  zoom = 1.0;
+  panX = 0;
+  panY = 0;
+  document.getElementById('zoom-slider').value = 100;
+  document.getElementById('zoom-label').textContent = '100%';
+}
+
+// ===== ズームスライダー =====
+function onZoomSlider(val) {
+  zoom = val / 100;
+  document.getElementById('zoom-label').textContent = val + '%';
+}
+
+// ===== ホイールズーム =====
+canvas.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  zoom = Math.max(0.2, Math.min(4.0, zoom - e.deltaY * 0.001));
+  const pct = Math.round(zoom * 100);
+  document.getElementById('zoom-slider').value = Math.min(300, pct);
+  document.getElementById('zoom-label').textContent = pct + '%';
+}, { passive: false });
+
+// ===== 映像パン（映像内ドラッグ） =====
+let panning = false, panSX, panSY, panOX, panOY;
+
+canvas.addEventListener('mousedown', function(e) {
+  panning = true;
+  panSX = e.clientX; panSY = e.clientY;
+  panOX = panX; panOY = panY;
+  canvas.classList.add('panning');
+  e.stopPropagation();
+});
+
+document.addEventListener('mousemove', function(e) {
+  if (panning) {
+    const vw = video.videoWidth  || 1;
+    const vh = video.videoHeight || 1;
+    const w  = canvas.offsetWidth;
+    const h  = canvas.offsetHeight;
+    panX = panOX - (e.clientX - panSX) / zoom;
+    panY = panOY - (e.clientY - panSY) / zoom;
+    // 範囲制限
+    const maxPX = vw / 2 - w / zoom / 2;
+    const maxPY = vh / 2 - h / zoom / 2;
+    panX = Math.max(-maxPX, Math.min(maxPX, panX));
+    panY = Math.max(-maxPY, Math.min(maxPY, panY));
+  }
+  if (dragging) {
+    pip.style.left = (dragOX + e.clientX - dragSX) + 'px';
+    pip.style.top  = (dragOY + e.clientY - dragSY) + 'px';
+  }
+  if (resizing) doResize(e);
+});
+
+document.addEventListener('mouseup', function() {
+  panning  = false;
+  dragging = false;
+  resizing = false;
+  canvas.classList.remove('panning');
+});
+
+// ===== ダブルクリックで最小化/復元 =====
+pip.addEventListener('dblclick', function(e) {
+  if (e.target.classList.contains('resize-handle')) return;
+  if (e.target.id === 'pip-close' || e.target.id === 'pip-reset') return;
+  pip.classList.toggle('minimized');
+});
+
+// ===== ウィンドウドラッグ移動 =====
+let dragging = false, dragOX, dragOY, dragSX, dragSY;
+
+pip.addEventListener('mousedown', function(e) {
+  if (e.target === canvas) return;
+  if (e.target.classList.contains('resize-handle')) return;
+  if (e.target.id === 'pip-close' || e.target.id === 'pip-reset') return;
+  dragging = true;
+  const r = pip.getBoundingClientRect();
+  dragSX = e.clientX; dragSY = e.clientY;
+  dragOX = r.left; dragOY = r.top;
+  pip.style.right = 'auto'; pip.style.bottom = 'auto';
+  pip.style.left = dragOX + 'px'; pip.style.top = dragOY + 'px';
+  e.preventDefault();
+});
+
+// ===== 四隅リサイズ =====
+let resizing = false, resizeDir = null;
+let resOX, resOY, resW, resH, resPX, resPY;
+
+document.querySelectorAll('.resize-handle').forEach(function(handle) {
+  handle.addEventListener('mousedown', function(e) {
+    e.stopPropagation();
+    resizing = true;
+    resizeDir = handle.dataset.dir;
+    const r = pip.getBoundingClientRect();
+    resOX = e.clientX; resOY = e.clientY;
+    resW = r.width; resH = r.height;
+    resPX = r.left; resPY = r.top;
+    pip.style.left = resPX + 'px'; pip.style.top = resPY + 'px';
+    pip.style.right = 'auto'; pip.style.bottom = 'auto';
+    e.preventDefault();
+  });
+});
+
+function doResize(e) {
+  const minW = 160, minH = 90;
+  const dx = e.clientX - resOX;
+  const dy = e.clientY - resOY;
+  if (resizeDir === 'se') {
+    pip.style.width  = Math.max(minW, resW + dx) + 'px';
+    pip.style.height = Math.max(minH, resH + dy) + 'px';
+  } else if (resizeDir === 'sw') {
+    const newW = Math.max(minW, resW - dx);
+    pip.style.width  = newW + 'px';
+    pip.style.height = Math.max(minH, resH + dy) + 'px';
+    pip.style.left   = (resPX + resW - newW) + 'px';
+  } else if (resizeDir === 'ne') {
+    pip.style.width  = Math.max(minW, resW + dx) + 'px';
+    const newH = Math.max(minH, resH - dy);
+    pip.style.height = newH + 'px';
+    pip.style.top    = (resPY + resH - newH) + 'px';
+  } else if (resizeDir === 'nw') {
+    const newW = Math.max(minW, resW - dx);
+    const newH = Math.max(minH, resH - dy);
+    pip.style.width  = newW + 'px';
+    pip.style.height = newH + 'px';
+    pip.style.left   = (resPX + resW - newW) + 'px';
+    pip.style.top    = (resPY + resH - newH) + 'px';
+  }
+}
+</script>
+</body>
+</html>
