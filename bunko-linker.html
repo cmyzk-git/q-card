@@ -613,17 +613,6 @@
 
     // ===== URLからテキストを取得 (フォールバック機能付きCORS回避プロキシ経由) =====
     async function fetchFromUrl() {
-        // --- ユーザー指定の最短接続検証用コード ---
-        try {
-            const test = await fetch(
-                "https://api.allorigins.win/raw?url=https://www.aozora.gr.jp/cards/000035/files/1567_14913.html"
-            );
-            console.log("検証リクエスト ステータスコード:", test.status);
-        } catch (testErr) {
-            console.error("検証リクエストのエラー:", testErr);
-        }
-        // ----------------------------------------
-
         const urlInput = document.getElementById('aozora-url').value.trim();
         if (!urlInput) {
             showToast('URLを入力してください');
@@ -634,95 +623,44 @@
         fetchBtn.innerText = '通信中...';
         fetchBtn.disabled = true;
 
-        // CORS回避用通信ジェネレータリスト
-        // 特定のプロキシが403を返すか、またはネットワークフェッチが遮断(TypeError)された場合でも、
-        // 直通・各種プロキシ(動的JSONPラッパー含む)を確実にフォールバックするように設計
-        const proxyGenerators = [
-            // 1. JSONP方式 (CORSを回避してFailed to fetchを100%抑制可能)
-            async (url) => {
-                const text = await fetchJsonpAllOrigins(url);
-                return { isJsonText: true, text: text };
-            },
-            // 2. AllOrigins 標準API方式 (CORS/fetch経由)
-            async (url) => {
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-                if (!res.ok) throw new Error(`AllOrigins Error: ${res.status}`);
-                const data = await res.json();
-                if (!data || !data.contents) throw new Error('AllOrigins contents is empty');
-                return { isJsonText: true, text: data.contents };
-            },
-            // 3. CodeTabs Proxy (403を返しにくい軽量プロキシ)
-            async (url) => {
-                const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-                if (!res.ok) throw new Error(`CodeTabs Error: ${res.status}`);
-                const buffer = await res.arrayBuffer();
-                return { isDirectBuffer: true, buffer: buffer };
-            },
-            // 4. ダイレクトアクセス
-            async (url) => {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP Direct Error: ${res.status}`);
-                const buffer = await res.arrayBuffer();
-                return { isDirectBuffer: true, buffer: buffer };
-            },
-            // 5. CorsProxy.io (フォールバック)
-            async (url) => {
-                const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
-                if (!res.ok) throw new Error(`CorsProxy Error: ${res.status}`);
-                const buffer = await res.arrayBuffer();
-                return { isDirectBuffer: true, buffer: buffer };
-            }
+        // 整理されたプロキシリスト
+        const proxies = [
+            { name: "CorsProxy", url: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}` }
         ];
 
         let fetchedText = "";
         let isSuccess = false;
-        let lastError = null;
+        let successRoute = null;
 
-        for (let i = 0; i < proxyGenerators.length; i++) {
+        for (let i = 0; i < proxies.length; i++) {
             try {
-                const result = await proxyGenerators[i](urlInput);
+                const proxy = proxies[i];
+                const res = await fetch(proxy.url(urlInput));
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 
-                if (result.isJsonText) {
-                    fetchedText = result.text;
-                    isSuccess = true;
-                    break;
-                } else if (result.isDirectBuffer) {
-                    const buffer = result.buffer;
-                    let decodedText = "";
-                    
-                    try {
-                        // UTF-8デコード
-                        const decoder = new TextDecoder('utf-8');
-                        decodedText = decoder.decode(buffer);
-                        
-                        // 文字化けが検出された、または Shift_JIS 特有のバイナリパターンと想定される場合
-                        if (decodedText.includes('') || decodedText.includes('？') || (!decodedText.includes('青空文庫') && !decodedText.includes('［＃') && /[\uFFFD]/.test(decodedText))) {
-                            const sjisDecoder = new TextDecoder('shift_jis');
-                            decodedText = sjisDecoder.decode(buffer);
-                        }
-                    } catch (decodeErr) {
-                        console.warn("デコードエラーによる再試行:", decodeErr);
-                        const sjisDecoder = new TextDecoder('shift_jis');
-                        decodedText = sjisDecoder.decode(buffer);
-                    }
-                    
-                    fetchedText = decodedText;
-                    isSuccess = true;
-                    break;
+                const buffer = await res.arrayBuffer();
+                
+                // デコード処理
+                let decodedText = new TextDecoder('utf-8').decode(buffer);
+                if (decodedText.includes('') || decodedText.includes('？')) {
+                    decodedText = new TextDecoder('shift_jis').decode(buffer);
                 }
+                
+                fetchedText = decodedText;
+                successRoute = proxy.name;
+                isSuccess = true;
+                break;
             } catch (err) {
-                console.warn(`取得ルート ${i + 1} の処理でエラーが発生しました。次の手段を試行します。`, err);
-                lastError = err;
+                console.warn(`Route ${i + 1} (${proxies[i].name}) failed. Fallback...`);
             }
         }
 
         if (isSuccess) {
             loadedRawText = fetchedText;
-            showToast('データを取得・解析しました！');
+            showToast(`取得成功 (${successRoute})`);
             processCurrentText();
         } else {
-            alert('URLからのデータ取得に失敗しました。\n\n【原因】\nプロキシへの過剰アクセスによる制限（403 Forbidden）か、ブラウザのセキュリティポリシー制限（Failed to fetch）のいずれかによって通信が遮断されました。\n\n【最も確実な代替手段】\n青空文庫の作品ページから「テキストファイル(zip)」または「HTMLファイル」をパソコンに一度ダウンロードし、解凍したあとの「.txt」ファイルを下の「ドラッグ＆ドロップエリア」に直接ドロップしてください。ローカルでのファイル読込はCORS制限の影響を100%回避し、文字化けもなく瞬時に完了します。');
-            console.error("Fetch Failures:", lastError);
+            alert('データの取得に失敗しました。青空文庫のファイルを直接ダウンロードし、ドラッグ＆ドロップで読み込んでください。');
         }
 
         fetchBtn.innerText = '取得';
