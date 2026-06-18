@@ -695,39 +695,22 @@
 let title = "青空文庫シナリオ";
 let author = "";
 
-if (loadedRawText.includes('<h1 class="title">')) {
+const metaDoc = new DOMParser().parseFromString(
+    loadedRawText,
+    "text/html"
+);
 
-    const doc = new DOMParser().parseFromString(
-        loadedRawText,
-        "text/html"
-    );
+title =
+    metaDoc.querySelector('.title')
+        ?.textContent
+        ?.trim()
+    || title;
 
-    title =
-        doc.querySelector('.title')
-            ?.textContent
-            ?.trim()
-        || title;
-
-    author =
-        doc.querySelector('.author')
-            ?.textContent
-            ?.trim()
-        || author;
-
-} else {
-
-    let lines = loadedRawText
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean);
-
-    if (lines.length > 0) title = lines[0];
-    if (lines.length > 1) author = lines[1];
-}
-        // 通常、最初の1〜5行にタイトルと著者がある
-        if (lines.length > 0 && lines[0]) title = lines[0];
-        if (lines.length > 1 && lines[1]) author = lines[1];
-        if (lines.length > 2 && lines[2] && lines[2].length < 15 && !author) author = lines[2];
+author =
+    metaDoc.querySelector('.author')
+        ?.textContent
+        ?.trim()
+    || author;
 
         // 本文開始・終了マーカーによるトリミング
         let mainText = "";
@@ -905,6 +888,10 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
+console.log("TITLE=", title);
+console.log("AUTHOR=", author);
+console.log("SCENARIO=", `${title}${author ? ' ' + author : ''}`);
+        
         parsedScenario.name =
     `${title}${author ? ' ' + author : ''}`;
         parsedScenario.cards = finalCards;
