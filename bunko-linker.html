@@ -766,6 +766,10 @@ if (mainText.includes("<ruby")) {
 
     mainText = doc.body.innerHTML;
 }
+        console.log(
+  "RUBY後:",
+  mainText.substring(0,500)
+);
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
 
