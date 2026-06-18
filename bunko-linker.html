@@ -728,8 +728,37 @@
             mainText = cleanLines.join('\n');
         }
 
-        // XHTML版のタグ打ちなどの暫定消去
-        mainText = mainText.replace(/<[^>]+>/g, '');
+        // XHTMLの ruby を先に処理
+if (loadedRawText.includes("<ruby")) {
+
+    if (rubyMode === "clean-opt") {
+
+        // 漢字のみ残す
+        mainText = mainText.replace(
+            /<ruby[^>]*>(.*?)<rt[^>]*>.*?<\/rt><\/ruby>/gis,
+            '$1'
+        );
+
+    } else if (rubyMode === "speech-opt") {
+
+        // ルビのみ残す
+        mainText = mainText.replace(
+            /<ruby[^>]*>.*?<rt[^>]*>(.*?)<\/rt><\/ruby>/gis,
+            '$1'
+        );
+
+    } else if (rubyMode === "hybrid-opt") {
+
+        // 漢字(ルビ)
+        mainText = mainText.replace(
+            /<ruby[^>]*>(.*?)<rt[^>]*>(.*?)<\/rt><\/ruby>/gis,
+            '$1($2)'
+        );
+    }
+}
+
+// 残りのタグを削除
+mainText = mainText.replace(/<[^>]+>/g, '');
 
         // 2. 不要な青空文庫注記［＃…］の削除
         mainText = mainText.replace(/［＃[^］\n]+］/g, '');
