@@ -728,35 +728,44 @@
             mainText = cleanLines.join('\n');
         }
 
-        // XHTMLの ruby を先に処理
-if (loadedRawText.includes("<ruby")) {
+ // XHTMLの ruby を先に処理
+
+if (mainText.includes("<ruby")) {
+
+    const doc = new DOMParser().parseFromString(mainText, "text/html");
 
     if (rubyMode === "clean-opt") {
 
-        // 漢字のみ残す
-        mainText = mainText.replace(
-            /<ruby[^>]*>(.*?)<rt[^>]*>.*?<\/rt><\/ruby>/gis,
-            '$1'
-        );
+        doc.querySelectorAll("rt,rp").forEach(el => el.remove());
 
     } else if (rubyMode === "speech-opt") {
 
-        // ルビのみ残す
-        mainText = mainText.replace(
-            /<ruby[^>]*>.*?<rt[^>]*>(.*?)<\/rt><\/ruby>/gis,
-            '$1'
-        );
+        doc.querySelectorAll("ruby").forEach(ruby => {
+
+            const rt = ruby.querySelector("rt");
+
+            ruby.replaceWith(rt ? rt.textContent : ruby.textContent);
+
+        });
 
     } else if (rubyMode === "hybrid-opt") {
 
-        // 漢字(ルビ)
-        mainText = mainText.replace(
-            /<ruby[^>]*>(.*?)<rt[^>]*>(.*?)<\/rt><\/ruby>/gis,
-            '$1($2)'
-        );
-    }
-}
+        doc.querySelectorAll("ruby").forEach(ruby => {
 
+            const rt = ruby.querySelector("rt");
+
+            const rb = ruby.textContent.replace(rt?.textContent || '', '');
+
+            ruby.replaceWith(
+                `${rb}(${rt?.textContent || ''})`
+            );
+
+        });
+
+    }
+
+    mainText = doc.body.innerHTML;
+}
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
 
