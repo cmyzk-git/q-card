@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qcard Bunko Linker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080c14;
+            --surface: #0e1525;
+            --surface2: #141d30;
+            --surface3: #1a2540;
+            --border: #1f2e4a;
+            --border2: #2a3d60;
+            --accent: #3d8bff;
+            --accent2: #6c63ff;
+            --accent-glow: rgba(61,139,255,0.18);
+            --text: #d8e4f8;
+            --text-muted: #5a7299;
+            --text-dim: #3d5278;
+            --success: #2dd4a4;
+            --warning: #f5a623;
+            --danger: #f2526a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            padding-bottom: 60px;
+        }
+
+        /* 背景ノイズテクスチャ */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0; opacity: 0.4;
+        }
+
+        /* ヘッダー */
+        .top-bar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            position: relative;
+            z-index: 10;
+        }
+        .top-bar::after {
+            content: '';
+            position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+            opacity: 0.4;
+        }
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .app-logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .app-badge {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--accent2);
+            border: 1px solid rgba(108,99,255,0.4);
+            background: rgba(108,99,255,0.08);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-weight: 700;
+        }
+
+        /* メインレイアウト */
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 24px;
+            z-index: 5;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* パネル設計 */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+        .panel-title span.number {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            background: var(--border);
+            color: var(--accent);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* フォームグループ */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+        .input-text {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .input-text:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        /* ドラッグ＆ドロップ */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            background: rgba(20,29,48,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(61,139,255,0.04);
+        }
+        .drop-zone-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        .drop-zone-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* オプション設定 */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        @media (max-width: 500px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .select-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 10px;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* ボタン */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 12px 20px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(108,99,255,0.3);
+        }
+        .btn-primary:hover {
+            opacity: 0.95;
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-secondary:hover {
+            border-color: var(--border2);
+            background: var(--surface3);
+        }
+
+        /* デモセクション */
+        .demo-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* JSON出力・プレビュー */
+        .output-box {
+            background: #04060b;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: #9cdcfe;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* カードのプレビューグリッド */
+        .preview-scroll {
+            max-height: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+        }
+        .preview-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .preview-scroll::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 2px;
+        }
+        .card-mini {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .card-mini-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .card-mini-content {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* トースト通知 */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-size: 0.8rem;
+            color: var(--text);
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 10px var(--accent-glow);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* インフォボックス */
+        .info-box {
+            background: rgba(61,139,255,0.06);
+            border: 1px solid rgba(61,139,255,0.25);
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+        .info-box strong {
+            color: var(--accent);
+        }
+        .info-box ul {
+            margin-left: 16px;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+    <div class="logo-group">
+        <div class="app-logo">Qcard Bunko Linker</div>
+        <span class="app-badge">Qcard PRO 姉妹ツール</span>
+    </div>
+    <div>
+        <button class="btn-secondary" onclick="window.close()">閉じる</button>
+    </div>
+</div>
+
+<!-- MAIN CONTAINER -->
+<div class="main-container">
+
+    <!-- LEFT: INPUT & CONFIG -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="number">1</span>
+            青空文庫データの読込・設定
+        </div>
+
+        <!-- DEMO LOADER -->
+        <div class="form-group">
+            <label class="form-label">サンプル作品で即座に試す</label>
+            <div class="demo-bar">
+                <button class="btn-secondary" onclick="loadDemo('melos')">🏃 走れメロス</button>
+                <button class="btn-secondary" onclick="loadDemo('rashomon')">👹 羅生門</button>
+                <button class="btn-secondary" onclick="loadDemo('ginga')">🌌 銀河鉄道の夜 (抄)</button>
+            </div>
+        </div>
+
+        <!-- URL INPUT -->
+        <div class="form-group">
+            <label class="form-label" for="aozora-url">青空文庫 XHTMLファイル または テキスト版のURL</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="aozora-url" class="input-text" placeholder="https://www.aozora.gr.jp/cards/..." style="flex: 1;">
+                <button class="btn-primary" id="fetch-btn" onclick="fetchFromUrl()" style="padding: 10px 16px; box-shadow: none;">取得</button>
+            </div>
+        </div>
+
+        <!-- FILE DRAG & DROP -->
+        <div class="form-group">
+            <label class="form-label">ローカルのTXT（またはXHTML）ファイルをドロップ</label>
+            <div class="drop-zone" id="drop-zone" ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)" onclick="triggerFileInput()">
+                <span class="drop-zone-icon">📥</span>
+                <span class="drop-zone-text" id="drop-text">青空文庫からダウンロードしたファイルをここにドロップ<br><small style="color: var(--text-dim);">またはクリックしてファイルを選択</small></span>
+                <input type="file" id="file-input" style="display: none;" onchange="onFileSelected(event)" accept=".txt,.html,.xhtml">
+            </div>
+        </div>
+
+        <!-- CONFIGURATIONS -->
+        <div class="options-grid">
+            <div class="form-group">
+                <label class="form-label">カード1枚 of 目安文字数</label>
+                <select id="chunk-size" class="select-input" onchange="processCurrentText()">
+                    <option value="150">超高密度 (約150文字)</option>
+                    <option value="250" selected>標準 (約250文字)</option>
+                    <option value="400">低密度 (約400文字)</option>
+                    <option value="600">長文 (約600文字)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ルビ（読み仮名）の処理</label>
+                <select id="ruby-mode" class="select-input" onchange="processCurrentText()">
+                    <option value="speech-opt" selected>音声重視（漢字を消してルビを残す）</option>
+                    <option value="clean-opt">ルビ除去（ルビを消して漢字のみにする）</option>
+                    <option value="hybrid-opt">併記（漢字の後にルビを括弧で残す）</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="options-grid">
+            <div class="form-group">
+                <label class="form-label">Qcard PRO グリッド列数</label>
+                <select id="grid-cols" class="select-input" onchange="processCurrentText()">
+                    <option value="3">3列</option>
+                    <option value="4" selected>4列 (推奨)</option>
+                    <option value="5">5列</option>
+                    <option value="6">6列</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">カードタイトルの自動命名ルール</label>
+                <input type="text" id="title-prefix" class="input-text" value="[#]" placeholder="連番ルール" oninput="processCurrentText()">
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: OUTPUT PREVIEW & ACTION -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="number">2</span>
+            変換結果プレビュー・保存
+        </div>
+
+        <!-- GENERATED SCENARIO TITLE -->
+        <div class="form-group">
+            <label class="form-label">生成されるシナリオ名（大分類）</label>
+            <input type="text" id="scenario-name" class="input-text" style="font-weight: 700; color: var(--accent2);" placeholder="ここに作品タイトルが入ります" oninput="onScenarioNameChange()">
+        </div>
+
+        <!-- PREVIEW STATS -->
+        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <span>総文字数: <strong id="stat-chars" style="color: var(--text);">0</strong> 文字</span>
+            <span>生成カード数: <strong id="stat-cards" style="color: var(--accent);">0</strong> 枚</span>
+            <span>グリッド配置: <strong id="stat-layout" style="color: var(--success);">0 × 0</strong> (行×列)</span>
+        </div>
+
+        <!-- CARD PREVIEW AREA -->
+        <div class="form-group">
+            <label class="form-label">カード一覧プレビュー</label>
+            <div class="preview-scroll" id="preview-container">
+                <div style="text-align: center; color: var(--text-dim); font-size: 0.8rem; padding: 40px 0;">
+                    データが読み込まれていません
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn-primary" onclick="copyJSON()" style="flex: 1;" id="action-copy" disabled>
+                📋 JSONをクリップボードにコピー
+            </button>
+            <button class="btn-primary" onclick="downloadJSON()" style="flex: 1; background: linear-gradient(135deg, var(--success) 0%, var(--accent) 100%); box-shadow: 0 4px 15px rgba(45,212,164,0.3);" id="action-download" disabled>
+                💾 Qcard用JSONファイルを保存
+            </button>
+        </div>
+
+        <!-- INSTRUCTION INFO -->
+        <div class="info-box">
+            <strong>💡 Qcard PRO への読み込み手順：</strong>
+            <ul>
+                <li>上のボタンで「JSONファイルを保存」します。</li>
+                <li>「Qcard PRO」アプリを開き、右上の <strong>データ管理</strong> をクリック。</li>
+                <li>一番下のインポート項目で <strong>JSON</strong> ボタンを押し、保存したファイルを読み込ませるだけです！</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast">コピーされました</div>
+
+<script>
+    // ===== アプリの状態空間 =====
+    let loadedRawText = "";
+    let parsedScenario = {
+        name: "",
+        cards: []
+    };
+    let currentQcardJSON = null;
+
+    // ===== 初期化 =====
+    window.addEventListener('load', () => {
+        // ドラッグ＆ドロップの挙動をバインド
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+    });
+
+    // ===== UI フィードバック =====
+    function showToast(message) {
+        const t = document.getElementById('toast');
+        t.innerText = message;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // ===== ドラッグ＆ドロップ / ファイル読み込み =====
+    function triggerFileInput() {
+        document.getElementById('file-input').click();
+    }
+
+    function onFileSelected(e) {
+        const file = e.target.files[0];
+        if (file) handleFile(file);
+    }
+
+    // ドラッグオーバー、リーブ処理の関数
+    function onDragOver(e) {
+        e.preventDefault();
+    }
+    function onDragLeave() {
+        // 必要に応じて処理を追加
+    }
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            loadedRawText = evt.target.result;
+            document.getElementById('drop-text').innerHTML = `読み込み完了: <strong style="color: var(--success);">${file.name}</strong><br><small>設定を変更すると自動で再計算されます</small>`;
+            processCurrentText();
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    // JSONP通信によるCORS回避フェッチ用グローバルコールバック空間
+    window.__allOriginsJsonpCallbacks = window.__allOriginsJsonpCallbacks || {};
+
+    // ===== JSONP通信ラッパー =====
+    function fetchJsonpAllOrigins(url) {
+        return new Promise((resolve, reject) => {
+            const callbackName = 'callback_' + Math.random().toString(36).slice(2);
+            const script = document.createElement('script');
+            
+            // AllOriginsのJSONPインターフェース
+            const jsonpUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&callback=__allOriginsJsonpCallbacks.${callbackName}`;
+            
+            // タイムアウト監視 (7秒)
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('JSONP Request Timeout'));
+            }, 7000);
+
+            function cleanup() {
+                clearTimeout(timeoutId);
+                script.remove();
+                delete window.__allOriginsJsonpCallbacks[callbackName];
+            }
+
+            // グローバルスコープにコールバックを公開
+            window.__allOriginsJsonpCallbacks[callbackName] = function(data) {
+                cleanup();
+                if (data && data.contents) {
+                    resolve(data.contents);
+                } else {
+                    reject(new Error('JSONP contents is empty'));
+                }
+            };
+
+            script.src = jsonpUrl;
+            script.onerror = function() {
+                cleanup();
+                reject(new Error('JSONP Script Load Error'));
+            };
+
+            document.body.appendChild(script);
+        });
+    }
+
+    // ===== URLからテキストを取得 (フォールバック機能付きCORS回避プロキシ経由) =====
+    async function fetchFromUrl() {
+        // --- ユーザー指定の最短接続検証用コード ---
+        try {
+            const test = await fetch(
+                "https://api.allorigins.win/raw?url=https://www.aozora.gr.jp/cards/000035/files/1567_14913.html"
+            );
+            console.log("検証リクエスト ステータスコード:", test.status);
+        } catch (testErr) {
+            console.error("検証リクエストのエラー:", testErr);
+        }
+        // ----------------------------------------
+
+        const urlInput = document.getElementById('aozora-url').value.trim();
+        if (!urlInput) {
+            showToast('URLを入力してください');
+            return;
+        }
+
+        const fetchBtn = document.getElementById('fetch-btn');
+        fetchBtn.innerText = '通信中...';
+        fetchBtn.disabled = true;
+
+        // CORS回避用通信ジェネレータリスト
+        // 特定のプロキシが403を返すか、またはネットワークフェッチが遮断(TypeError)された場合でも、
+        // 直通・各種プロキシ(動的JSONPラッパー含む)を確実にフォールバックするように設計
+        const proxyGenerators = [
+            // 1. JSONP方式 (CORSを回避してFailed to fetchを100%抑制可能)
+            async (url) => {
+                const text = await fetchJsonpAllOrigins(url);
+                return { isJsonText: true, text: text };
+            },
+            // 2. AllOrigins 標準API方式 (CORS/fetch経由)
+            async (url) => {
+                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+                if (!res.ok) throw new Error(`AllOrigins Error: ${res.status}`);
+                const data = await res.json();
+                if (!data || !data.contents) throw new Error('AllOrigins contents is empty');
+                return { isJsonText: true, text: data.contents };
+            },
+            // 3. CodeTabs Proxy (403を返しにくい軽量プロキシ)
+            async (url) => {
+                const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+                if (!res.ok) throw new Error(`CodeTabs Error: ${res.status}`);
+                const buffer = await res.arrayBuffer();
+                return { isDirectBuffer: true, buffer: buffer };
+            },
+            // 4. ダイレクトアクセス
+            async (url) => {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP Direct Error: ${res.status}`);
+                const buffer = await res.arrayBuffer();
+                return { isDirectBuffer: true, buffer: buffer };
+            },
+            // 5. CorsProxy.io (フォールバック)
+            async (url) => {
+                const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+                if (!res.ok) throw new Error(`CorsProxy Error: ${res.status}`);
+                const buffer = await res.arrayBuffer();
+                return { isDirectBuffer: true, buffer: buffer };
+            }
+        ];
+
+        let fetchedText = "";
+        let isSuccess = false;
+        let lastError = null;
+
+        for (let i = 0; i < proxyGenerators.length; i++) {
+            try {
+                const result = await proxyGenerators[i](urlInput);
+                
+                if (result.isJsonText) {
+                    fetchedText = result.text;
+                    isSuccess = true;
+                    break;
+                } else if (result.isDirectBuffer) {
+                    const buffer = result.buffer;
+                    let decodedText = "";
+                    
+                    try {
+                        // UTF-8デコード
+                        const decoder = new TextDecoder('utf-8');
+                        decodedText = decoder.decode(buffer);
+                        
+                        // 文字化けが検出された、または Shift_JIS 特有のバイナリパターンと想定される場合
+                        if (decodedText.includes('') || decodedText.includes('？') || (!decodedText.includes('青空文庫') && !decodedText.includes('［＃') && /[\uFFFD]/.test(decodedText))) {
+                            const sjisDecoder = new TextDecoder('shift_jis');
+                            decodedText = sjisDecoder.decode(buffer);
+                        }
+                    } catch (decodeErr) {
+                        console.warn("デコードエラーによる再試行:", decodeErr);
+                        const sjisDecoder = new TextDecoder('shift_jis');
+                        decodedText = sjisDecoder.decode(buffer);
+                    }
+                    
+                    fetchedText = decodedText;
+                    isSuccess = true;
+                    break;
+                }
+            } catch (err) {
+                console.warn(`取得ルート ${i + 1} の処理でエラーが発生しました。次の手段を試行します。`, err);
+                lastError = err;
+            }
+        }
+
+        if (isSuccess) {
+            loadedRawText = fetchedText;
+            showToast('データを取得・解析しました！');
+            processCurrentText();
+        } else {
+            alert('URLからのデータ取得に失敗しました。\n\n【原因】\nプロキシへの過剰アクセスによる制限（403 Forbidden）か、ブラウザのセキュリティポリシー制限（Failed to fetch）のいずれかによって通信が遮断されました。\n\n【最も確実な代替手段】\n青空文庫の作品ページから「テキストファイル(zip)」または「HTMLファイル」をパソコンに一度ダウンロードし、解凍したあとの「.txt」ファイルを下の「ドラッグ＆ドロップエリア」に直接ドロップしてください。ローカルでのファイル読込はCORS制限の影響を100%回避し、文字化けもなく瞬時に完了します。');
+            console.error("Fetch Failures:", lastError);
+        }
+
+        fetchBtn.innerText = '取得';
+        fetchBtn.disabled = false;
+    }
+
+    // ===== デモ小説を即座にパース =====
+    function loadDemo(key) {
+        if (key === 'melos') {
+            loadedRawText = `走れメロス\n太宰治\n\n-------------------------------------------------------\n［＃本文の開始］\nメロスは激怒した。必ず、かの邪智暴虐の王を除かなければならぬと決意した。メロスには政治がわからぬ。メロスは、村の牧人である。笛を吹き、羊と遊んで暮してきた。けれども邪悪に対しては、人一倍に敏感であった。きょう未明メロスは村を出発し、野を越え山越え、十里はなれた此のシラクスの市にやって来た。メロスには無二の友がある。セリヌンティウスである。今は此のシラクスの市で、石工として働いている。その友を、これから訪ねてみるつもりなのだ。久しく逢わなかったのだから、訪ねて行くのが楽しみである。\n\n路を歩きながら、メロスはまちの様子を怪しく思った。ひっそりしている。もう既に日も落ちて、まちの暗いのは当り前だが、けれども、なんだか、夜のせいばかりでは無く、市全体が、妙に寂しい。のんきなメロスも、だんだん不安になって来た。道で逢った若い衆をつかまえて、何かあったのか、二年前に此の市に来たときは、夜でも皆が歌を歌って、まちは賑やかであった筈だが、と質問した。若い衆は、首を振って答えなかった。しばらく歩いて老爺に逢い、こんどはもっと、語勢を強くして質問した。老爺は答えず、ただ溜息をついた。メロスは両手で老爺の肩を揺すぶって質問を重ねた。\n「王様は、人を殺します。」\n「なぜ殺すのだ。悪王の乱心か。」\n「いいえ、悪心ではございませぬ。人の心を、信じる事が出来ないというのです。このごろは、臣下の者をも疑って、少しく贅沢の暮らしをしている者、一人あて人質に差し出すべき事を命じました。命令を拒めば十字架にかけられて殺されます。きょうは、六人が殺されました。」\n聞くうちに、メロスは激怒した。「呆れた王だ。生かして置けぬ。」\nメロスは、単純な男であった。買い入れた品物を背負ったままで、のそのそ王城に入って行った。たちまち彼は、巡邏の警吏に捕縛された。調べられて、彼の懐中からは短刀が出て来たので、騒ぎが大きくなった。メロスは、王の前に引き出された。\n［＃本文の終わり］`;
+        } else if (key === 'rashomon') {
+            loadedRawText = `羅生門\n芥川龍之介\n\n-------------------------------------------------------\n［＃本文の開始］\nある日の暮方の事である。一人の下人が、羅生門の露の下で、雨やみを待っていた。\n広い門の下には、この男のほかに誰もいない。ただ、所々丹塗の剥げた、大きな丸柱に、蟋蟀が一匹とまっている。羅生門が、朱雀大路にある以上は、この男のほかにも、雨やみをする市女笠や揉烏帽子が、もう二三人もありそうなものである。それが、この男のほかには誰もいない。\nなぜかと云うと、この二三年、京都には、地震とか辻風とか火事とか飢饉とか云う災が続いて起った。そこで洛中の寂れ方は一通りではない。旧記によると、仏像や仏具を打ち砕いて、その薪がわりに市で売っていたと云う事である。洛中がその始末であるから、羅生門の修理などは、元より誰も捨てて顧みる者がなかった。するとその荒れ果てたのをよい事にして、狐狸が棲む。盗人が棲む。とうとうしまいには、引き取り手のない死人を、この門へ持って来て、棄てて行くという習慣さえ出来た。そこで、日の目が見えなくなると、誰でも気味を悪がって、この門の近所へは足を踏い入れることをしなかったのである。\n［＃本文の終わり］`;
+        } else if (key === 'ginga') {
+            loadedRawText = `銀河鉄道の夜\n宮沢賢治\n\n-------------------------------------------------------\n［＃本文の開始］\n「ではみなさんは、そういうふうに川だと云われたり、乳の流れたあとだと云われたりしていたこのぼんやりと白いものがなにかご承知ですか。」先生は、黒板につるした大きな黒い星座の図の、上から下へ白くけむった銀河の帯のようなところを指しながら、みんなに問いをかけました。\nカムパネルラが手をあげました。それから四五人手をあげました。ジョバンニも手をあげようとして、急いでそのままやめました。たしかにそれはいつか雑誌で読んだ、銀河の体だということを知っていたのですが、このごろジョバンニは、学校でも毎日教室でも、ただ一人ぼんやりしているようで、カムパネルラが、その手をあげたのを見ると、なんだか急に、カムパネルラのほうがずっとえらいような気がして、手をあげることができなかったのです。\n先生はすぐにそれを気がつきました。\n「ジョバンニさん。あなたはわかっているのでしょう。」\nジョバンニは勢いよく立ちあがりましたが、立ってみるともうはっきりと答えることができませんでした。ザネリが前の席から、ふりかえって、ジョバンニを見てくすっとわらいました。ジョバンニはもうどぎまぎして真っ赤になってしまいました。\n「銀河を大きな望遠鏡で見ますと、それはたくさんの小さな星のあまりですね。」先生は優しく言いました。\n［＃本文の終わり］`;
+        }
+        document.getElementById('drop-text').innerHTML = `デモ作品読込中: <strong style="color: var(--accent2);">${key === 'melos' ? '走れメロス' : key === 'rashomon' ? '羅生門' : '銀河鉄道の夜'}</strong>`;
+        processCurrentText();
+    }
+
+    // ===== 青空文庫テキストのパース処理核心部 =====
+    function processCurrentText() {
+        if (!loadedRawText) return;
+
+        // 設定の取得
+        const chunkSize = parseInt(document.getElementById('chunk-size').value, 10);
+        const rubyMode = document.getElementById('ruby-mode').value;
+        const gridCols = parseInt(document.getElementById('grid-cols').value, 10);
+        const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
+
+        // 1. タイトルと著者の自動抽出
+        let lines = loadedRawText.split('\n').map(l => l.trim());
+        let title = "青空文庫シナリオ";
+        let author = "";
+
+        // 通常、最初の1〜5行にタイトルと著者がある
+        if (lines.length > 0 && lines[0]) title = lines[0];
+        if (lines.length > 1 && lines[1]) author = lines[1];
+        if (lines.length > 2 && lines[2] && lines[2].length < 15 && !author) author = lines[2];
+
+        // 本文開始・終了マーカーによるトリミング
+        let mainText = "";
+        let startIndex = loadedRawText.indexOf('［＃本文の開始］');
+        let endIndex = loadedRawText.indexOf('［＃本文の終わり］');
+
+        if (startIndex !== -1) {
+            // マーカーの後ろから切り出し
+            if (endIndex !== -1 && endIndex > startIndex) {
+                mainText = loadedRawText.slice(startIndex + '［＃本文の開始］'.length, endIndex);
+            } else {
+                mainText = loadedRawText.slice(startIndex + '［＃本文の開始］'.length);
+            }
+        } else {
+            // マーカーがない場合はヘッダーなどのメタデータを簡易除去
+            let cleanLines = [];
+            let inHeader = true;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.startsWith('-------') || line.includes('目次') || line.includes('下書き')) {
+                    inHeader = false;
+                    continue;
+                }
+                if (inHeader && i > 5) inHeader = false; // 最初の5行以降はヘッダーと見なさない
+                if (!inHeader) cleanLines.push(line);
+            }
+            mainText = cleanLines.join('\n');
+        }
+
+        // XHTML版のタグ打ちなどの暫定消去
+        mainText = mainText.replace(/<[^>]+>/g, '');
+
+        // 2. 不要な青空文庫注記［＃…］の削除
+        mainText = mainText.replace(/［＃[^］\n]+］/g, '');
+        mainText = mainText.replace(/〔[^〕\n]+〕/g, ''); // 踊り字などの注記除外
+
+        // 3. ルビ処理
+        if (rubyMode === 'speech-opt') {
+            // 音声重視：親文字を削除してルビ（読み仮名）をプレーンテキスト化
+            // ｜親文字《るび》 -> るび
+            mainText = mainText.replace(/｜([^《\n]+)《([^》\n]+)》/g, '$2');
+            // 漢字《るび》 -> るび
+            mainText = mainText.replace(/([一-龠々〆ヶ]+)《([^》\n]+)》/g, '$2');
+        } else if (rubyMode === 'clean-opt') {
+            // ルビ除去：ルビ用の記号と読みを削除し、漢字だけを残す
+            mainText = mainText.replace(/｜/g, '');
+            mainText = mainText.replace(/《[^》\n]+》/g, '');
+        } else if (rubyMode === 'hybrid-opt') {
+            // 併記：漢字(よみがな) のように括弧をつけて残す
+            mainText = mainText.replace(/｜([^《\n]+)《([^》\n]+)》/g, '$1($2)');
+            mainText = mainText.replace(/([一-龠々〆ヶ]+)《([^》\n]+)》/g, '$1($2)');
+        }
+
+        // ｜記号のみの単独残留を削除
+        mainText = mainText.replace(/｜/g, '');
+
+        // 改行コードの調整（無駄な連続改行をまとめる）
+        mainText = mainText.replace(/\n\s*\n/g, '\n');
+
+        // 4. 文字数目安に基づくカード（小分類）自動分割
+        let cards = [];
+        let paragraphs = mainText.split('\n');
+        let currentChunk = "";
+
+        for (let i = 0; i < paragraphs.length; i++) {
+            let p = paragraphs[i].trim();
+            if (!p) continue;
+
+            if ((currentChunk.length + p.length) > chunkSize && currentChunk.length > 0) {
+                // 現時点までのバッファをカード化
+                cards.push({
+                    title: "", // 後で連番を設定
+                    content: currentChunk.trim()
+                });
+                currentChunk = p + "\n";
+            } else {
+                currentChunk += p + "\n";
+            }
+        }
+        if (currentChunk.trim()) {
+            cards.push({
+                title: "",
+                content: currentChunk.trim()
+            });
+        }
+
+        // 万一、1枚のカードが極端に長い場合の安全なさらなる分割
+        let finalCards = [];
+        cards.forEach((card) => {
+            let content = card.content;
+            if (content.length > chunkSize * 1.8) {
+                // 文末を探して分割
+                let sentences = content.split(/(?<=[。！？])/);
+                let subChunk = "";
+                sentences.forEach(s => {
+                    if ((subChunk.length + s.length) > chunkSize) {
+                        finalCards.push({ title: "", content: subChunk.trim() });
+                        subChunk = s;
+                    } else {
+                        subChunk += s;
+                    }
+                });
+                if (subChunk.trim()) finalCards.push({ title: "", content: subChunk.trim() });
+            } else {
+                finalCards.push(card);
+            }
+        });
+
+        // タイトルの自動付与ルールを適用
+        finalCards.forEach((card, idx) => {
+            let label = String(idx + 1);
+            let displayTitle = titlePrefix.replace('[#]', label);
+            card.title = displayTitle;
+        });
+
+        // データ空間へ反映
+        parsedScenario.name = title.trim();
+        parsedScenario.cards = finalCards;
+
+        // UI表示の同期
+        document.getElementById('scenario-name').value = parsedScenario.name;
+        document.getElementById('stat-chars').textContent = mainText.length.toLocaleString();
+        document.getElementById('stat-cards').textContent = finalCards.length.toLocaleString();
+        
+        // グリッドレイアウト計算
+        const rowsCount = Math.ceil(finalCards.length / gridCols);
+        document.getElementById('stat-layout').textContent = `${rowsCount} 行 × ${gridCols} 列`;
+
+        // プレビュー表示
+        renderPreview();
+        
+        // JSONの生成
+        buildQcardJSON(rowsCount, gridCols);
+    }
+
+    // ===== シナリオ名変更時 =====
+    function onScenarioNameChange() {
+        parsedScenario.name = document.getElementById('scenario-name').value.trim();
+        if (currentQcardJSON && currentQcardJSON.scenarios[0]) {
+            currentQcardJSON.scenarios[0].name = parsedScenario.name;
+        }
+    }
+
+    // ===== Qcard用互換JSONの作成 =====
+    function buildQcardJSON(rows, cols) {
+        if (parsedScenario.cards.length === 0) {
+            currentQcardJSON = null;
+            document.getElementById('action-copy').disabled = true;
+            document.getElementById('action-download').disabled = true;
+            return;
+        }
+
+        const scenarioId = crypto.randomUUID();
+        
+        // Qcard PROがパースして読み込める完全な形式
+        currentQcardJSON = {
+            scenarios: [
+                {
+                    id: scenarioId,
+                    name: parsedScenario.name || "青空文庫シナリオ",
+                    cols: cols,
+                    rows: rows,
+                    data: parsedScenario.cards.map(c => ({
+                        title: c.title,
+                        content: c.content
+                    }))
+                }
+            ],
+            activeId: scenarioId
+        };
+
+        document.getElementById('action-copy').disabled = false;
+        document.getElementById('action-download').disabled = false;
+    }
+
+    // ===== プレビューレンダリング =====
+    function renderPreview() {
+        const container = document.getElementById('preview-container');
+        container.innerHTML = '';
+
+        if (parsedScenario.cards.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: var(--text-dim); font-size: 0.8rem; padding: 40px 0;">データが読み込まれていません</div>`;
+            return;
+        }
+
+        parsedScenario.cards.forEach((card, idx) => {
+            const div = document.createElement('div');
+            div.className = 'card-mini';
+            
+            const title = document.createElement('div');
+            title.className = 'card-mini-title';
+            title.textContent = `カード ${idx + 1} : ${card.title}`;
+
+            const content = document.createElement('div');
+            content.className = 'card-mini-content';
+            content.textContent = card.content.length > 80 ? card.content.slice(0, 80) + '...' : card.content;
+
+            div.appendChild(title);
+            div.appendChild(content);
+            container.appendChild(div);
+        });
+    }
+
+    // ===== クリップボードコピー =====
+    function copyJSON() {
+        if (!currentQcardJSON) return;
+        const text = JSON.stringify(currentQcardJSON, null, 2);
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('📋 クリップボードにコピーしました！');
+            }).catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('📋 クリップボードにコピーしました！');
+        } catch(e) {
+            showToast('コピーに失敗しました');
+        }
+        document.body.removeChild(ta);
+    }
+
+    // ===== JSONファイルのダウンロード =====
+    function downloadJSON() {
+        if (!currentQcardJSON) return;
+        const text = JSON.stringify(currentQcardJSON, null, 2);
+        const blob = new Blob([text], { type: 'application/json' });
+        
+        // ファイル名を安全な形に整形
+        const safeName = (parsedScenario.name || "aozora_scenario").replace(/[\\/:*?"<>|]/g, '_');
+        const filename = `Qcard_${safeName}.json`;
+        
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        showToast(`💾 ファイルを保存しました: ${filename}`);
+    }
+</script>
+
+</body>
+</html>
