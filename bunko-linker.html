@@ -754,7 +754,9 @@ if (mainText.includes("<ruby")) {
 
             const rt = ruby.querySelector("rt");
 
-            const rb = ruby.textContent.replace(rt?.textContent || '', '');
+            const rb = ruby.textContent
+    .replace(rt?.textContent || '', '')
+    .replace(/[（）]/g, '');
 
             ruby.replaceWith(
                 `${rb}(${rt?.textContent || ''})`
