@@ -801,6 +801,18 @@ mainText = mainText.replace(/<[^>]+>/g, '');
             mainText = mainText.replace(/([一-龠々〆ヶ]+)《([^》\n]+)》/g, '$1($2)');
         }
 
+// 青空文庫注記除去
+mainText = mainText.replace(/［＃.*?］/g, '');
+
+// 縦棒除去
+mainText = mainText.replace(/｜/g, '');
+
+// 空行整理
+mainText = mainText.replace(/\n{3,}/g, '\n\n');
+
+// 全角スペース整理
+mainText = mainText.replace(/　{2,}/g, '　');
+        
         // ｜記号のみの単独残留を削除
         mainText = mainText.replace(/｜/g, '');
 
