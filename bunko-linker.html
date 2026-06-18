@@ -691,10 +691,39 @@
         const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
 
         // 1. タイトルと著者の自動抽出
-        let lines = loadedRawText.split('\n').map(l => l.trim());
-        let title = "青空文庫シナリオ";
-        let author = "";
 
+let title = "青空文庫シナリオ";
+let author = "";
+
+if (loadedRawText.includes('<h1 class="title">')) {
+
+    const doc = new DOMParser().parseFromString(
+        loadedRawText,
+        "text/html"
+    );
+
+    title =
+        doc.querySelector('.title')
+            ?.textContent
+            ?.trim()
+        || title;
+
+    author =
+        doc.querySelector('.author')
+            ?.textContent
+            ?.trim()
+        || author;
+
+} else {
+
+    let lines = loadedRawText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
+
+    if (lines.length > 0) title = lines[0];
+    if (lines.length > 1) author = lines[1];
+}
         // 通常、最初の1〜5行にタイトルと著者がある
         if (lines.length > 0 && lines[0]) title = lines[0];
         if (lines.length > 1 && lines[1]) author = lines[1];
@@ -876,7 +905,8 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
-        parsedScenario.name = title.trim();
+        parsedScenario.name =
+    `${title}${author ? ' ' + author : ''}`;
         parsedScenario.cards = finalCards;
 
         // UI表示の同期
