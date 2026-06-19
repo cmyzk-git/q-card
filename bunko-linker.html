@@ -691,26 +691,14 @@
         const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
 
         // 1. タイトルと著者の自動抽出
+        let lines = loadedRawText.split('\n').map(l => l.trim());
+        let title = "青空文庫シナリオ";
+        let author = "";
 
-let title = "青空文庫シナリオ";
-let author = "";
-
-const metaDoc = new DOMParser().parseFromString(
-    loadedRawText,
-    "text/html"
-);
-
-title =
-    metaDoc.querySelector('.title')
-        ?.textContent
-        ?.trim()
-    || title;
-
-author =
-    metaDoc.querySelector('.author')
-        ?.textContent
-        ?.trim()
-    || author;
+        // 通常、最初の1〜5行にタイトルと著者がある
+        if (lines.length > 0 && lines[0]) title = lines[0];
+        if (lines.length > 1 && lines[1]) author = lines[1];
+        if (lines.length > 2 && lines[2] && lines[2].length < 15 && !author) author = lines[2];
 
         // 本文開始・終了マーカーによるトリミング
         let mainText = "";
@@ -760,28 +748,23 @@ if (mainText.includes("<ruby")) {
 
         });
 
-   } else if (rubyMode === "hybrid-opt") {
+    } else if (rubyMode === "hybrid-opt") {
 
-    doc.querySelectorAll("ruby").forEach(ruby => {
+        doc.querySelectorAll("ruby").forEach(ruby => {
 
-        const rt = ruby.querySelector("rt");
+            const rt = ruby.querySelector("rt");
 
-        const rbNode = ruby.querySelector("rb");
+            const rb = ruby.textContent
+    .replace(rt?.textContent || '', '')
+    .replace(/[（）]/g, '');
 
-        const rb = rbNode
-            ? rbNode.textContent
-            : ruby.childNodes[0]?.textContent || '';
+            ruby.replaceWith(
+                `${rb}(${rt?.textContent || ''})`
+            );
 
-        console.log("RB=", rb);
-console.log("RT=", rt?.textContent);
-        
-        ruby.replaceWith(
-            `${rb}(${rt?.textContent || ''})`
-        );
+        });
 
-    });
-
-}
+    }
 
     mainText = doc.body.innerHTML;
 }
@@ -813,18 +796,6 @@ mainText = mainText.replace(/<[^>]+>/g, '');
             mainText = mainText.replace(/([一-龠々〆ヶ]+)《([^》\n]+)》/g, '$1($2)');
         }
 
-// 青空文庫注記除去
-mainText = mainText.replace(/［＃.*?］/g, '');
-
-// 縦棒除去
-mainText = mainText.replace(/｜/g, '');
-
-// 空行整理
-mainText = mainText.replace(/\n{3,}/g, '\n\n');
-
-// 全角スペース整理
-mainText = mainText.replace(/　{2,}/g, '　');
-        
         // ｜記号のみの単独残留を削除
         mainText = mainText.replace(/｜/g, '');
 
@@ -888,12 +859,7 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
-console.log("TITLE=", title);
-console.log("AUTHOR=", author);
-console.log("SCENARIO=", `${title}${author ? ' ' + author : ''}`);
-        
-        parsedScenario.name =
-    `${title}${author ? ' ' + author : ''}`;
+        parsedScenario.name = title.trim();
         parsedScenario.cards = finalCards;
 
         // UI表示の同期
