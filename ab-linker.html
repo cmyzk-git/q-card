@@ -404,7 +404,7 @@
         <!-- FILE DRAG & DROP -->
         <div class="form-group">
             <label class="form-label">ローカルのTXT（またはXHTML）ファイルをドロップ</label>
-            <div class="drop-zone" id="drop-zone" ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)" onclick="triggerFileInput()">
+            <div class="drop-zone" id="drop-zone" onclick="triggerFileInput()">
                 <span class="drop-zone-icon">📥</span>
                 <span class="drop-zone-text" id="drop-text">青空文庫からダウンロードしたファイルをここにドロップ<br><small style="color: var(--text-dim);">またはクリックしてファイルを選択</small></span>
                 <input type="file" id="file-input" style="display: none;" onchange="onFileSelected(event)" accept=".txt,.html,.xhtml">
@@ -515,23 +515,41 @@
 
     // ===== 初期化 =====
     window.addEventListener('load', () => {
-        // ドラッグ＆ドロップの挙動をバインド
         const dropZone = document.getElementById('drop-zone');
+
+        // 重要：Chromeはページ全体（window/document）がdragover/dropを
+        // preventDefault()しない場合、ドロップされたファイルを
+        // 新規タブで開いてしまう（＝ドロップが「機能しない」ように見える）。
+        // ドロップゾーン以外の場所へのドロップも含めて既定動作を止める。
+        ['dragenter', 'dragover', 'drop'].forEach(eventName => {
+            window.addEventListener(eventName, (e) => {
+                e.preventDefault();
+            }, false);
+            document.body.addEventListener(eventName, (e) => {
+                e.preventDefault();
+            }, false);
+        });
+
+        // ドラッグ＆ドロップの挙動をドロップゾーンにバインド
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
                 dropZone.classList.add('dragover');
             }, false);
         });
         ['dragleave'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 dropZone.classList.remove('dragover');
             }, false);
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             dropZone.classList.remove('dragover');
 
             const file = e.dataTransfer && e.dataTransfer.files
@@ -540,6 +558,8 @@
 
             if (file) {
                 handleFile(file);
+            } else {
+                showToast('ファイルが見つかりませんでした');
             }
         }, false);
     });
@@ -560,14 +580,8 @@
     function onFileSelected(e) {
         const file = e.target.files[0];
         if (file) handleFile(file);
-    }
-
-    // ドラッグオーバー、リーブ処理の関数
-    function onDragOver(e) {
-        e.preventDefault();
-    }
-    function onDragLeave() {
-        // 必要に応じて処理を追加
+        // 同じファイルを再選択した場合でもonchangeが発火するようにリセット
+        e.target.value = '';
     }
 
     
@@ -578,26 +592,14 @@ function handleFile(file) {
     reader.onload = function(evt) {
 
         const buffer = evt.target.result;
+        let text;
 
-        const utf8Text = new TextDecoder('utf-8').decode(buffer);
-        const sjisText = new TextDecoder('shift_jis').decode(buffer);
-
-        let text = utf8Text;
-
-        const header = utf8Text.slice(0, 2000);
-
-        if (
-            /shift_jis|shift-jis|charset=shift_jis|encoding="shift_jis"/i.test(header)
-        ) {
-            text = sjisText;
-        } else if (
-            /utf-8|charset=utf-8|encoding="utf-8"/i.test(header)
-        ) {
-            text = utf8Text;
-        } else {
-            const scoreUtf8 = (utf8Text.match(/[ぁ-龯]/g) || []).length;
-            const scoreSjis = (sjisText.match(/[ぁ-龯]/g) || []).length;
-            text = scoreSjis > scoreUtf8 ? sjisText : utf8Text;
+        try {
+            text = detectAndDecode(buffer);
+        } catch (err) {
+            console.error('デコードエラー:', err);
+            showToast('ファイルの読み込みに失敗しました（文字コード判定エラー）');
+            return;
         }
 
         loadedRawText = text;
@@ -610,7 +612,48 @@ function handleFile(file) {
         processCurrentText();
     };
 
+    reader.onerror = function() {
+        showToast('ファイルの読み込みに失敗しました');
+    };
+
     reader.readAsArrayBuffer(file);
+}
+
+// ===== 文字エンコーディングの自動判定とデコード =====
+// 青空文庫のファイルはShift_JIS（CP932）が大多数だが、近年配布される
+// 一部のXHTML版や、サイトによってはUTF-8の場合もあるため、
+// 「宣言を読む」→「UTF-8として厳密検証する」の二段構えで確実に判定する。
+function detectAndDecode(buffer) {
+    // まずヘッダー部分だけをShift_JISとして仮読みし、charset宣言を確認する
+    // （宣言自体はASCII互換なので、どちらのエンコーディングで読んでも文字列として一致する）
+    const headBytes = buffer.slice(0, 2000);
+    const headerGuess = new TextDecoder('shift_jis').decode(headBytes);
+
+    const declaresShiftJis = /charset=["']?shift[_-]jis["']?|encoding=["']shift[_-]jis["']/i.test(headerGuess);
+    const declaresUtf8 = /charset=["']?utf-8["']?|encoding=["']utf-8["']/i.test(headerGuess);
+
+    if (declaresShiftJis) {
+        return new TextDecoder('shift_jis').decode(buffer);
+    }
+    if (declaresUtf8) {
+        // fatal:true で厳密にデコードし、本当にUTF-8として正しいか確認する
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        } catch (e) {
+            // 宣言と実体が異なる不正なファイルへの保険
+            return new TextDecoder('shift_jis').decode(buffer);
+        }
+    }
+
+    // 宣言が見つからない場合：UTF-8として厳密デコードを試み、
+    // 失敗（不正なバイト列を検出）したら確実にShift_JISと判断する。
+    // これはスコア多数決よりも確実（UTF-8として不正なバイト列は
+    // 純粋なUTF-8テキストには絶対に出現しないため）。
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    } catch (e) {
+        return new TextDecoder('shift_jis').decode(buffer);
+    }
 }
 
 
@@ -686,13 +729,10 @@ function handleFile(file) {
                 if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 
                 const buffer = await res.arrayBuffer();
-                
-                // デコード処理
-                let decodedText = new TextDecoder('utf-8').decode(buffer);
-                if (decodedText.includes('') || decodedText.includes('？')) {
-                    decodedText = new TextDecoder('shift_jis').decode(buffer);
-                }
-                
+
+                // デコード処理（ファイル読み込みと同じ確実な判定方式に統一）
+                const decodedText = detectAndDecode(buffer);
+
                 fetchedText = decodedText;
                 successRoute = proxy.name;
                 isSuccess = true;
