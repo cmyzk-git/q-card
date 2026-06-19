@@ -748,23 +748,28 @@ if (mainText.includes("<ruby")) {
 
         });
 
-    } else if (rubyMode === "hybrid-opt") {
+   } else if (rubyMode === "hybrid-opt") {
 
-        doc.querySelectorAll("ruby").forEach(ruby => {
+    doc.querySelectorAll("ruby").forEach(ruby => {
 
-            const rt = ruby.querySelector("rt");
+        const rt = ruby.querySelector("rt");
 
-            const rb = ruby.textContent
-    .replace(rt?.textContent || '', '')
-    .replace(/[（）]/g, '');
+        const rbNode = ruby.querySelector("rb");
 
-            ruby.replaceWith(
-                `${rb}(${rt?.textContent || ''})`
-            );
+        const rb = rbNode
+            ? rbNode.textContent
+            : ruby.childNodes[0]?.textContent || '';
 
-        });
+        console.log("RB=", rb);
+console.log("RT=", rt?.textContent);
+        
+        ruby.replaceWith(
+            `${rb}(${rt?.textContent || ''})`
+        );
 
-    }
+    });
+
+}
 
     mainText = doc.body.innerHTML;
 }
@@ -796,6 +801,18 @@ mainText = mainText.replace(/<[^>]+>/g, '');
             mainText = mainText.replace(/([一-龠々〆ヶ]+)《([^》\n]+)》/g, '$1($2)');
         }
 
+// 青空文庫注記除去
+mainText = mainText.replace(/［＃.*?］/g, '');
+
+// 縦棒除去
+mainText = mainText.replace(/｜/g, '');
+
+// 空行整理
+mainText = mainText.replace(/\n{3,}/g, '\n\n');
+
+// 全角スペース整理
+mainText = mainText.replace(/　{2,}/g, '　');
+        
         // ｜記号のみの単独残留を削除
         mainText = mainText.replace(/｜/g, '');
 
