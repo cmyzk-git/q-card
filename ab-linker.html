@@ -691,10 +691,12 @@
         const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
 
         // 1. タイトルと著者の自動抽出
+        let lines = loadedRawText.split('
+').map(l => l.trim());
+
         let title = "青空文庫シナリオ";
         let author = "";
 
-        // XHTML優先でタイトル・作者取得
         if (/<h1[^>]*class=["']title["']/i.test(loadedRawText)) {
 
             const metaDoc = new DOMParser().parseFromString(
@@ -710,13 +712,10 @@
 
         } else {
 
-            let lines = loadedRawText
-                .split('\n')
-                .map(l => l.trim())
-                .filter(Boolean);
+            const nonEmptyLines = lines.filter(Boolean);
 
-            if (lines[0]) title = lines[0];
-            if (lines[1]) author = lines[1];
+            if (nonEmptyLines[0]) title = nonEmptyLines[0];
+            if (nonEmptyLines[1]) author = nonEmptyLines[1];
         }
 
         // 本文開始・終了マーカーによるトリミング
@@ -895,10 +894,7 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
-        parsedScenario.name =
-            author
-                ? `${title.trim()} ${author.trim()}`
-                : title.trim();
+        parsedScenario.name = author ? `${title.trim()} ${author.trim()}` : title.trim();
         parsedScenario.cards = finalCards;
 
         // UI表示の同期
