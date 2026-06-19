@@ -695,10 +695,28 @@
         let title = "青空文庫シナリオ";
         let author = "";
 
-        // 通常、最初の1〜5行にタイトルと著者がある
-        if (lines.length > 0 && lines[0]) title = lines[0];
-        if (lines.length > 1 && lines[1]) author = lines[1];
-        if (lines.length > 2 && lines[2] && lines[2].length < 15 && !author) author = lines[2];
+        // XHTML版青空文庫
+        try {
+            const metaDoc = new DOMParser().parseFromString(loadedRawText, "text/html");
+            const titleNode = metaDoc.querySelector("h1.title");
+            const authorNode = metaDoc.querySelector("h2.author");
+
+            if (titleNode && titleNode.textContent.trim()) {
+                title = titleNode.textContent.trim();
+            } else if (lines.length > 0 && lines[0]) {
+                title = lines[0];
+            }
+
+            if (authorNode && authorNode.textContent.trim()) {
+                author = authorNode.textContent.trim();
+            } else if (lines.length > 1 && lines[1]) {
+                author = lines[1];
+            }
+
+        } catch(e) {
+            if (lines.length > 0 && lines[0]) title = lines[0];
+            if (lines.length > 1 && lines[1]) author = lines[1];
+        }
 
         // 本文開始・終了マーカーによるトリミング
         let mainText = "";
@@ -777,8 +795,32 @@ console.log("RT=", rt?.textContent);
   "RUBY後:",
   mainText.substring(0,500)
 );
+
+// 埋め込みスクリプト・広告コード除去
+mainText = mainText.replace(/<script[\s\S]*?<\/script>/gi, '');
+mainText = mainText.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+mainText = mainText.replace(/\(function\(\)\{function c\(\)[\s\S]*$/i, '');
+mainText = mainText.replace(/if\(b\)\.\.\.[\s\S]*$/i, '');
+
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
+
+
+        // 青空文庫XHTMLの本文終了位置補正
+        mainText = mainText.replace(
+            /<div[^>]*class=["']bibliographical_information["'][\s\S]*$/i,
+            ''
+        );
+
+        mainText = mainText.replace(
+            /<div[^>]*class=["']notation_notes["'][\s\S]*$/i,
+            ''
+        );
+
+        mainText = mainText.replace(
+            /<hr\s*\/?>[\s\S]*$/i,
+            ''
+        );
 
         // 2. 不要な青空文庫注記［＃…］の削除
         mainText = mainText.replace(/［＃[^］\n]+］/g, '');
@@ -876,7 +918,7 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
-        parsedScenario.name = title.trim();
+        parsedScenario.name = author ? `${title.trim()} ${author.trim()}` : title.trim();
         parsedScenario.cards = finalCards;
 
         // UI表示の同期
