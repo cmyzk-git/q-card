@@ -218,6 +218,22 @@
             cursor: pointer;
         }
 
+        .preset-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .preset-btn:hover {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
         /* ボタン */
         .btn-primary {
             background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
@@ -415,12 +431,17 @@
         <div class="options-grid">
             <div class="form-group">
                 <label class="form-label">カード1枚 of 目安文字数</label>
-                <select id="chunk-size" class="select-input" onchange="processCurrentText()">
-                    <option value="150">超高密度 (約150文字)</option>
-                    <option value="250" selected>標準 (約250文字)</option>
-                    <option value="400">低密度 (約400文字)</option>
-                    <option value="600">長文 (約600文字)</option>
-                </select>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="number" id="chunk-size" class="input-text" value="250" min="20" max="5000" step="10" style="width: 100px;" oninput="processCurrentText()">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">文字</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                    <button type="button" class="preset-btn" onclick="setChunkSize(150)">150</button>
+                    <button type="button" class="preset-btn" onclick="setChunkSize(250)">250</button>
+                    <button type="button" class="preset-btn" onclick="setChunkSize(400)">400</button>
+                    <button type="button" class="preset-btn" onclick="setChunkSize(600)">600</button>
+                    <button type="button" class="preset-btn" onclick="setChunkSize(1000)">1000</button>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label">ルビ（読み仮名）の処理</label>
@@ -435,12 +456,17 @@
         <div class="options-grid">
             <div class="form-group">
                 <label class="form-label">Qcard PRO グリッド列数</label>
-                <select id="grid-cols" class="select-input" onchange="processCurrentText()">
-                    <option value="3">3列</option>
-                    <option value="4" selected>4列 (推奨)</option>
-                    <option value="5">5列</option>
-                    <option value="6">6列</option>
-                </select>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="number" id="grid-cols" class="input-text" value="4" min="1" max="20" step="1" style="width: 100px;" oninput="processCurrentText()">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">列</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                    <button type="button" class="preset-btn" onclick="setGridCols(3)">3</button>
+                    <button type="button" class="preset-btn" onclick="setGridCols(4)">4</button>
+                    <button type="button" class="preset-btn" onclick="setGridCols(5)">5</button>
+                    <button type="button" class="preset-btn" onclick="setGridCols(6)">6</button>
+                    <button type="button" class="preset-btn" onclick="setGridCols(8)">8</button>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label">カードタイトルの自動命名ルール</label>
@@ -451,8 +477,19 @@
                 </label>
                 <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer;">
                     <input type="checkbox" id="title-detect-heading" checked onchange="processCurrentText()" style="accent-color: var(--accent);">
-                    本文中の章見出し（一／二／三、中見出し注記など）を検出してタイトルに使う
+                    本文中の章見出し（一／二／三、中見出し注記など）を検出してタイトルに使う<br><small style="opacity:0.7;">※青空文庫モードのみ対応</small>
                 </label>
+            </div>
+        </div>
+
+        <div class="options-grid">
+            <div class="form-group">
+                <label class="form-label">言語・本文抽出モード</label>
+                <select id="lang-mode" class="select-input" onchange="processCurrentText()">
+                    <option value="auto" selected>自動判定（青空文庫 / 海外書籍）</option>
+                    <option value="aozora">青空文庫として処理（ルビ・注記を処理）</option>
+                    <option value="generic">海外書籍として処理（英語等・汎用HTML抽出）</option>
+                </select>
             </div>
         </div>
     </div>
@@ -571,6 +608,16 @@
             }
         }, false);
     });
+
+    // ===== 文字数・列数のプリセットボタン処理 =====
+    function setChunkSize(value) {
+        document.getElementById('chunk-size').value = value;
+        processCurrentText();
+    }
+    function setGridCols(value) {
+        document.getElementById('grid-cols').value = value;
+        processCurrentText();
+    }
 
     // ===== タイトルなしチェックボックスのトグル処理 =====
     function onTitleNoneToggle() {
@@ -842,20 +889,155 @@ function detectAndDecode(buffer) {
         return text;
     }
 
+    // ===== 言語・書籍形式の自動判定 =====
+    // 青空文庫らしさ（ルビタグ、注記、日本語文字比率）を見て、
+    // 「青空文庫」か「海外（汎用）書籍」かを自動判定する。
+    function detectIsAozora(rawText) {
+        if (/<ruby[\s>]/i.test(rawText)) return true;
+        if (/［＃[^］]*］/.test(rawText)) return true;
+        // 日本語の文字（ひらがな・カタカナ・漢字）の比率で判定
+        const sample = rawText.slice(0, 3000);
+        const jpChars = (sample.match(/[ぁ-んァ-ヶ一-龯]/g) || []).length;
+        const totalChars = sample.replace(/\s/g, '').length || 1;
+        return (jpChars / totalChars) > 0.15;
+    }
+
+    // Project Gutenberg等で使われる定型の開始・終了マーカーを検出してトリミングする。
+    // 一致しない場合は null を返し、呼び出し側で別のフォールバックを行わせる。
+    function trimGutenbergBoilerplate(rawText) {
+        const startRe = /\*{3}\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\*\n]*\*{3}/i;
+        const endRe = /\*{3}\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\*\n]*\*{3}/i;
+        const startMatch = rawText.match(startRe);
+        if (!startMatch) return null;
+
+        const startPos = startMatch.index + startMatch[0].length;
+        const endMatch = rawText.slice(startPos).match(endRe);
+        const endPos = endMatch ? startPos + endMatch.index : rawText.length;
+
+        return rawText.slice(startPos, endPos).trim();
+    }
+
+    // 海外書籍（汎用HTML/TXT）向けの本文抽出。
+    // HTMLの場合はscript/style/nav/header/footer等の非本文要素を除去してから
+    // テキスト化し、TXTの場合はそのまま整形する。
+    function extractGenericBookText(rawText) {
+        let text = rawText;
+
+        // HTMLらしき内容ならDOMで非本文要素を除去
+        if (/<html[\s>]|<body[\s>]|<p[\s>]/i.test(text)) {
+            try {
+                const doc = new DOMParser().parseFromString(text, "text/html");
+                doc.querySelectorAll('script, style, nav, header, footer, noscript, .pg-boilerplate, #pg-header, #pg-footer').forEach(el => el.remove());
+                const body = doc.body || doc;
+                // 段落・改行タグを実際の改行に変換してから残りのタグを除去
+                let html = body.innerHTML;
+                html = html.replace(/<\/(p|div|h[1-6])>/gi, '\n\n');
+                html = html.replace(/<br\s*\/?>/gi, '\n');
+                html = html.replace(/<[^>]+>/g, '');
+                text = html;
+                // HTMLエンティティの簡易デコード
+                const ta = document.createElement('textarea');
+                ta.innerHTML = text;
+                text = ta.value;
+            } catch (e) {
+                // DOM解析に失敗した場合は素朴なタグ除去のみ行う
+                text = text.replace(/<[^>]+>/g, '\n');
+            }
+        }
+
+        // Project Gutenbergの定型ヘッダー・フッター（境界マーカー）を除去
+        const trimmed = trimGutenbergBoilerplate(text);
+        if (trimmed !== null) {
+            text = trimmed;
+        }
+
+        // 連続する空行・余分な空白を整理
+        text = text.replace(/[ \t]+\n/g, '\n');
+        text = text.replace(/\n{3,}/g, '\n\n');
+        text = text.trim();
+
+        // PGのプレーンテキスト等は70字前後で固定幅折り返しされていることが多い。
+        // 空行（段落区切り）で区切ったブロック内の単純な改行はスペースに変換し、
+        // 「1段落＝1行」の論理構造に復元してから後段のカード分割に渡す。
+        text = text
+            .split(/\n\s*\n/)
+            .map(block => block.replace(/\n/g, ' ').replace(/\s{2,}/g, ' ').trim())
+            .join('\n\n');
+
+        return text;
+    }
+
+    // 海外書籍からタイトル・著者を簡易抽出する
+    function extractGenericTitleAuthor(rawText) {
+        let title = "";
+        let author = "";
+
+        // まずProject Gutenberg形式: "Title: xxxx" / "Author: xxxx" 形式の行を優先的に探す
+        // （本文中のヘッダー部分、概ね先頭2000文字以内に限定して誤爆を防ぐ）
+        const head = rawText.slice(0, 2000);
+        const titleLineMatch = head.match(/^\s*Title:\s*(.+)$/im);
+        const authorLineMatch = head.match(/^\s*Author:\s*(.+)$/im);
+        if (titleLineMatch) title = titleLineMatch[1].trim();
+        if (authorLineMatch) author = authorLineMatch[1].trim();
+
+        // 見つからなければHTMLのh1/titleタグにフォールバック
+        if (!title) {
+            try {
+                const doc = new DOMParser().parseFromString(rawText, "text/html");
+                const h1 = doc.querySelector('h1');
+                const titleTag = doc.querySelector('title');
+                if (h1 && h1.textContent.trim()) {
+                    title = h1.textContent.trim();
+                } else if (titleTag && titleTag.textContent.trim()) {
+                    title = titleTag.textContent.trim();
+                }
+            } catch (e) { /* DOM解析できない場合はTXT扱いとして以下にフォールバック */ }
+        }
+
+        if (!title) title = "Untitled Book";
+        return { title, author };
+    }
+
     // ===== 青空文庫テキストのパース処理核心部 =====
     function processCurrentText() {
         if (!loadedRawText) return;
 
-        // 設定の取得
-        const chunkSize = parseInt(document.getElementById('chunk-size').value, 10);
-        const rubyMode = document.getElementById('ruby-mode').value;
-        const gridCols = parseInt(document.getElementById('grid-cols').value, 10);
-        const titlePrefix = document.getElementById('title-prefix').value.trim();
+        // 設定の取得（数値入力欄は空欄やNaN、極端な範囲外を安全な値に補正する）
+        let chunkSize = parseInt(document.getElementById('chunk-size').value, 10);
+        if (!Number.isFinite(chunkSize) || chunkSize < 20) chunkSize = 250;
+        if (chunkSize > 5000) chunkSize = 5000;
 
-        // 1. タイトルと著者の自動抽出
+        const rubyMode = document.getElementById('ruby-mode').value;
+
+        let gridCols = parseInt(document.getElementById('grid-cols').value, 10);
+        if (!Number.isFinite(gridCols) || gridCols < 1) gridCols = 4;
+        if (gridCols > 20) gridCols = 20;
+
+        const titlePrefix = document.getElementById('title-prefix').value.trim();
+        const langMode = document.getElementById('lang-mode').value;
+
+        // 言語・書籍形式の判定（自動 / 強制指定）
+        const isAozora = langMode === 'aozora'
+            ? true
+            : langMode === 'generic'
+                ? false
+                : detectIsAozora(loadedRawText);
+
         let lines = loadedRawText.split('\n').map(l => l.trim());
-        let title = "青空文庫シナリオ";
+        let title = "";
         let author = "";
+        let mainText = "";
+
+        if (!isAozora) {
+            // ===== 海外書籍（汎用HTML/TXT）モード =====
+            const meta = extractGenericTitleAuthor(loadedRawText);
+            title = meta.title;
+            author = meta.author;
+            mainText = extractGenericBookText(loadedRawText);
+
+        } else {
+        // ===== 青空文庫モード =====
+        title = "青空文庫シナリオ";
 
         // XHTML版青空文庫
         try {
@@ -881,7 +1063,6 @@ function detectAndDecode(buffer) {
         }
 
         // 本文開始・終了マーカーによるトリミング
-        let mainText = "";
         let startIndex = loadedRawText.indexOf('［＃本文の開始］');
         let endIndex = loadedRawText.indexOf('［＃本文の終わり］');
 
@@ -1027,11 +1208,44 @@ mainText = mainText.replace(/　{2,}/g, '　');
         // 改行コードの調整（無駄な連続改行をまとめる）
         mainText = mainText.replace(/\n\s*\n/g, '\n');
 
+        } // ← isAozora の else ブロック終端（青空文庫専用処理ここまで）
+
+        // 海外書籍（汎用）モードの軽量クリーンアップ
+        // 日本語特有のルビ・注記処理は行わず、空白・改行の整理のみ行う。
+        if (!isAozora) {
+            mainText = mainText.replace(/[ \t]+\n/g, '\n');
+            mainText = mainText.replace(/\n{3,}/g, '\n\n');
+        }
+
         // 4. 文字数目安に基づくカード（小分類）自動分割
         //    章見出しマーカー（\x01...\x01）を検出した場合は、そこでカードを
         //    強制的に区切り、見出しテキストをそのカードの見出しタイトルとして記録する。
+        //    海外書籍モードでは段落が長くなりがちなため、先に文単位へ分解しておく。
+        let splitUnits;
+        if (!isAozora) {
+            // 英語等の略語（Mr. Mrs. Dr. St. など）の後では誤って文を分割しないための簡易対策
+            const abbrPattern = /\b(Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|Mt|Capt|Col|Gen|Rev|Hon|Inc|Ltd|Co|i\.e|e\.g)\.$/;
+            splitUnits = [];
+            mainText.split('\n').forEach(p => {
+                if (!p.trim()) { splitUnits.push(p); return; }
+                if (p.includes(HEADING_MARK)) { splitUnits.push(p); return; }
+                const rawSentences = p.split(/(?<=[.!?])\s+/);
+                const merged = [];
+                rawSentences.forEach(seg => {
+                    if (merged.length > 0 && abbrPattern.test(merged[merged.length - 1])) {
+                        merged[merged.length - 1] += ' ' + seg;
+                    } else {
+                        merged.push(seg);
+                    }
+                });
+                merged.forEach(s => splitUnits.push(s));
+            });
+        } else {
+            splitUnits = mainText.split('\n');
+        }
+
         let cards = [];
-        let paragraphs = mainText.split('\n');
+        let paragraphs = splitUnits;
         let currentChunk = "";
         let pendingHeading = ""; // 直前に検出した見出し（次のカードの先頭に適用）
         const headingRe = new RegExp(`${HEADING_MARK}([^${HEADING_MARK}]*)${HEADING_MARK}`);
@@ -1085,8 +1299,8 @@ mainText = mainText.replace(/　{2,}/g, '　');
         cards.forEach((card) => {
             let content = card.content;
             if (content.length > chunkSize * 1.8) {
-                // 文末を探して分割
-                let sentences = content.split(/(?<=[。！？])/);
+                // 文末を探して分割（日本語の句点等／英語等のピリオド等の両方に対応）
+                let sentences = content.split(/(?<=[。！？.!?])\s*/);
                 let subChunk = "";
                 let isFirstSub = true;
                 sentences.forEach(s => {
