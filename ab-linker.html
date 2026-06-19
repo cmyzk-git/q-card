@@ -795,6 +795,13 @@ console.log("RT=", rt?.textContent);
   "RUBY後:",
   mainText.substring(0,500)
 );
+
+// 埋め込みスクリプト・広告コード除去
+mainText = mainText.replace(/<script[\s\S]*?<\/script>/gi, '');
+mainText = mainText.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+mainText = mainText.replace(/\(function\(\)\{function c\(\)[\s\S]*$/i, '');
+mainText = mainText.replace(/if\(b\)\.\.\.[\s\S]*$/i, '');
+
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
 
