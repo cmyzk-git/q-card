@@ -533,8 +533,14 @@
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
+
+            const file = e.dataTransfer && e.dataTransfer.files
+                ? e.dataTransfer.files[0]
+                : null;
+
+            if (file) {
+                handleFile(file);
+            }
         }, false);
     });
 
@@ -564,54 +570,49 @@
         // 必要に応じて処理を追加
     }
 
-    function handleFile(file) {
+    
+function handleFile(file) {
 
     const reader = new FileReader();
 
     reader.onload = function(evt) {
 
         const buffer = evt.target.result;
-        let text = "";
 
-        try {
+        const utf8Text = new TextDecoder('utf-8').decode(buffer);
+        const sjisText = new TextDecoder('shift_jis').decode(buffer);
 
-            // まず Shift_JIS として読む
-            text = new TextDecoder('shift_jis').decode(buffer);
+        let text = utf8Text;
 
-            // 文字化けが疑われる場合は UTF-8 で再読込
-            if (text.includes('�') || text.trim().length < 50) {
-                text = new TextDecoder('utf-8').decode(buffer);
-            }
+        const header = utf8Text.slice(0, 2000);
 
-        } catch (e) {
-
-            try {
-                text = new TextDecoder('utf-8').decode(buffer);
-            } catch (e2) {
-                alert('ファイルの読込に失敗しました');
-                return;
-            }
+        if (
+            /shift_jis|shift-jis|charset=shift_jis|encoding="shift_jis"/i.test(header)
+        ) {
+            text = sjisText;
+        } else if (
+            /utf-8|charset=utf-8|encoding="utf-8"/i.test(header)
+        ) {
+            text = utf8Text;
+        } else {
+            const scoreUtf8 = (utf8Text.match(/[ぁ-龯]/g) || []).length;
+            const scoreSjis = (sjisText.match(/[ぁ-龯]/g) || []).length;
+            text = scoreSjis > scoreUtf8 ? sjisText : utf8Text;
         }
 
         loadedRawText = text;
 
-        if (typeof processCurrentText === 'function') {
-            processCurrentText();
-        }
-
         const dropText = document.getElementById('drop-text');
         if (dropText) {
-            dropText.innerHTML =
-                `読み込み完了: <strong>${file.name}</strong>`;
+            dropText.innerHTML = `読み込み完了: <strong>${file.name}</strong>`;
         }
-    };
 
-    reader.onerror = function() {
-        alert('ファイルの読込に失敗しました');
+        processCurrentText();
     };
 
     reader.readAsArrayBuffer(file);
 }
+
 
     // JSONP通信によるCORS回避フェッチ用グローバルコールバック空間
     window.__allOriginsJsonpCallbacks = window.__allOriginsJsonpCallbacks || {};
@@ -766,27 +767,6 @@
 
         // 本文開始・終了マーカーによるトリミング
         let mainText = "";
-
-        // 青空文庫XHTML優先
-        if (/class=["']main_text["']/i.test(loadedRawText)) {
-
-            const doc = new DOMParser().parseFromString(
-                loadedRawText,
-                "text/html"
-            );
-
-            const mainNode = doc.querySelector(".main_text");
-
-            if (mainNode) {
-                mainText = mainNode.innerHTML;
-
-                mainText = mainText.replace(/<hr\s*\/?>[\s\S]*$/i, '');
-                mainText = mainText.replace(/<div[^>]*class=["']bibliographical_information["'][\s\S]*$/i, '');
-                mainText = mainText.replace(/<div[^>]*class=["']notation_notes["'][\s\S]*$/i, '');
-            }
-        }
-
-        if (!mainText) {
         let startIndex = loadedRawText.indexOf('［＃本文の開始］');
         let endIndex = loadedRawText.indexOf('［＃本文の終わり］');
 
