@@ -692,29 +692,30 @@
 
         // 1. タイトルと著者の自動抽出
         let lines = loadedRawText.split('\n').map(l => l.trim());
-
         let title = "青空文庫シナリオ";
         let author = "";
 
-        if (/<h1[^>]*class=["']title["']/i.test(loadedRawText)) {
-
-            const metaDoc = new DOMParser().parseFromString(
-                loadedRawText,
-                "text/html"
-            );
-
+        // XHTML版青空文庫
+        try {
+            const metaDoc = new DOMParser().parseFromString(loadedRawText, "text/html");
             const titleNode = metaDoc.querySelector("h1.title");
             const authorNode = metaDoc.querySelector("h2.author");
 
-            if (titleNode) title = titleNode.textContent.trim();
-            if (authorNode) author = authorNode.textContent.trim();
+            if (titleNode && titleNode.textContent.trim()) {
+                title = titleNode.textContent.trim();
+            } else if (lines.length > 0 && lines[0]) {
+                title = lines[0];
+            }
 
-        } else {
+            if (authorNode && authorNode.textContent.trim()) {
+                author = authorNode.textContent.trim();
+            } else if (lines.length > 1 && lines[1]) {
+                author = lines[1];
+            }
 
-            const nonEmptyLines = lines.filter(Boolean);
-
-            if (nonEmptyLines[0]) title = nonEmptyLines[0];
-            if (nonEmptyLines[1]) author = nonEmptyLines[1];
+        } catch(e) {
+            if (lines.length > 0 && lines[0]) title = lines[0];
+            if (lines.length > 1 && lines[1]) author = lines[1];
         }
 
         // 本文開始・終了マーカーによるトリミング
