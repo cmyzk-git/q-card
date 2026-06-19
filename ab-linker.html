@@ -642,7 +642,7 @@
                 
                 // デコード処理
                 let decodedText = new TextDecoder('utf-8').decode(buffer);
-                if ((decodedText.match(/�/g)||[]).length > 5) {
+                if (decodedText.includes('') || decodedText.includes('？')) {
                     decodedText = new TextDecoder('shift_jis').decode(buffer);
                 }
                 
@@ -691,14 +691,33 @@
         const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
 
         // 1. タイトルと著者の自動抽出
-        let lines = loadedRawText.split('\n').map(l => l.trim());
         let title = "青空文庫シナリオ";
         let author = "";
 
-        // 通常、最初の1〜5行にタイトルと著者がある
-        if (lines.length > 0 && lines[0]) title = lines[0];
-        if (lines.length > 1 && lines[1]) author = lines[1];
-        if (lines.length > 2 && lines[2] && lines[2].length < 15 && !author) author = lines[2];
+        // XHTML優先でタイトル・作者取得
+        if (/<h1[^>]*class=["']title["']/i.test(loadedRawText)) {
+
+            const metaDoc = new DOMParser().parseFromString(
+                loadedRawText,
+                "text/html"
+            );
+
+            const titleNode = metaDoc.querySelector("h1.title");
+            const authorNode = metaDoc.querySelector("h2.author");
+
+            if (titleNode) title = titleNode.textContent.trim();
+            if (authorNode) author = authorNode.textContent.trim();
+
+        } else {
+
+            let lines = loadedRawText
+                .split('\n')
+                .map(l => l.trim())
+                .filter(Boolean);
+
+            if (lines[0]) title = lines[0];
+            if (lines[1]) author = lines[1];
+        }
 
         // 本文開始・終了マーカーによるトリミング
         let mainText = "";
@@ -819,15 +838,6 @@ mainText = mainText.replace(/　{2,}/g, '　');
         // 改行コードの調整（無駄な連続改行をまとめる）
         mainText = mainText.replace(/\n\s*\n/g, '\n');
 
-        // 強力なHTML/広告/スクリプト除去
-        mainText = mainText
-            .replace(/<script[\s\S]*?<\/script>/gi,'')
-            .replace(/<style[\s\S]*?<\/style>/gi,'')
-            .replace(/<iframe[\s\S]*?<\/iframe>/gi,'')
-            .replace(/function\s*\(\)\s*\{function c\([\s\S]*/i,'')
-            .replace(/<[^>]+>/g,'');
-        mainText = mainText.replace(/\n{3,}/g,'\n\n').trim();
-
         // 4. 文字数目安に基づくカード（小分類）自動分割
         let cards = [];
         let paragraphs = mainText.split('\n');
@@ -885,7 +895,10 @@ mainText = mainText.replace(/　{2,}/g, '　');
         });
 
         // データ空間へ反映
-        parsedScenario.name = `${title.trim()}${author ? ' / ' + author.trim() : ''}`;
+        parsedScenario.name =
+            author
+                ? `${title.trim()} ${author.trim()}`
+                : title.trim();
         parsedScenario.cards = finalCards;
 
         // UI表示の同期
