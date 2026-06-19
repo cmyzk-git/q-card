@@ -805,6 +805,23 @@ mainText = mainText.replace(/if\(b\)\.\.\.[\s\S]*$/i, '');
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
 
+
+        // 青空文庫XHTMLの本文終了位置補正
+        mainText = mainText.replace(
+            /<div[^>]*class=["']bibliographical_information["'][\s\S]*$/i,
+            ''
+        );
+
+        mainText = mainText.replace(
+            /<div[^>]*class=["']notation_notes["'][\s\S]*$/i,
+            ''
+        );
+
+        mainText = mainText.replace(
+            /<hr\s*\/?>[\s\S]*$/i,
+            ''
+        );
+
         // 2. 不要な青空文庫注記［＃…］の削除
         mainText = mainText.replace(/［＃[^］\n]+］/g, '');
         mainText = mainText.replace(/〔[^〕\n]+〕/g, ''); // 踊り字などの注記除外
