@@ -404,7 +404,7 @@
         <!-- FILE DRAG & DROP -->
         <div class="form-group">
             <label class="form-label">ローカルのTXT（またはXHTML）ファイルをドロップ</label>
-            <div class="drop-zone" id="drop-zone" ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)" onclick="triggerFileInput()">
+            <div class="drop-zone" id="drop-zone" onclick="triggerFileInput()">
                 <span class="drop-zone-icon">📥</span>
                 <span class="drop-zone-text" id="drop-text">青空文庫からダウンロードしたファイルをここにドロップ<br><small style="color: var(--text-dim);">またはクリックしてファイルを選択</small></span>
                 <input type="file" id="file-input" style="display: none;" onchange="onFileSelected(event)" accept=".txt,.html,.xhtml">
@@ -444,7 +444,15 @@
             </div>
             <div class="form-group">
                 <label class="form-label">カードタイトルの自動命名ルール</label>
-                <input type="text" id="title-prefix" class="input-text" value="[#]" placeholder="連番ルール" oninput="processCurrentText()">
+                <input type="text" id="title-prefix" class="input-text" value="[#]" placeholder="連番ルール（空欄でタイトルなし）" oninput="processCurrentText()">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; cursor: pointer;">
+                    <input type="checkbox" id="title-none" onchange="onTitleNoneToggle()" style="accent-color: var(--accent);">
+                    タイトルを付けない（Qcardに数字を読ませない）
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer;">
+                    <input type="checkbox" id="title-detect-heading" checked onchange="processCurrentText()" style="accent-color: var(--accent);">
+                    本文中の章見出し（一／二／三、中見出し注記など）を検出してタイトルに使う
+                </label>
             </div>
         </div>
     </div>
@@ -515,21 +523,70 @@
 
     // ===== 初期化 =====
     window.addEventListener('load', () => {
-        // ドラッグ＆ドロップの挙動をバインド
         const dropZone = document.getElementById('drop-zone');
+
+        // 重要：Chromeはページ全体（window/document）がdragover/dropを
+        // preventDefault()しない場合、ドロップされたファイルを
+        // 新規タブで開いてしまう（＝ドロップが「機能しない」ように見える）。
+        // ドロップゾーン以外の場所へのドロップも含めて既定動作を止める。
+        ['dragenter', 'dragover', 'drop'].forEach(eventName => {
+            window.addEventListener(eventName, (e) => {
+                e.preventDefault();
+            }, false);
+            document.body.addEventListener(eventName, (e) => {
+                e.preventDefault();
+            }, false);
+        });
+
+        // ドラッグ＆ドロップの挙動をドロップゾーンにバインド
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
                 dropZone.classList.add('dragover');
             }, false);
         });
-        ['dragleave', 'drop'].forEach(eventName => {
+        ['dragleave'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 dropZone.classList.remove('dragover');
             }, false);
         });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+
+            const file = e.dataTransfer && e.dataTransfer.files
+                ? e.dataTransfer.files[0]
+                : null;
+
+            if (file) {
+                handleFile(file);
+            } else {
+                showToast('ファイルが見つかりませんでした');
+            }
+        }, false);
     });
+
+    // ===== タイトルなしチェックボックスのトグル処理 =====
+    function onTitleNoneToggle() {
+        const checkbox = document.getElementById('title-none');
+        const prefixInput = document.getElementById('title-prefix');
+
+        if (checkbox.checked) {
+            prefixInput.dataset.prevValue = prefixInput.value;
+            prefixInput.value = '';
+            prefixInput.disabled = true;
+        } else {
+            prefixInput.disabled = false;
+            prefixInput.value = prefixInput.dataset.prevValue || '[#]';
+        }
+        processCurrentText();
+    }
 
     // ===== UI フィードバック =====
     function showToast(message) {
@@ -547,25 +604,82 @@
     function onFileSelected(e) {
         const file = e.target.files[0];
         if (file) handleFile(file);
+        // 同じファイルを再選択した場合でもonchangeが発火するようにリセット
+        e.target.value = '';
     }
 
-    // ドラッグオーバー、リーブ処理の関数
-    function onDragOver(e) {
-        e.preventDefault();
+    
+function handleFile(file) {
+
+    const reader = new FileReader();
+
+    reader.onload = function(evt) {
+
+        const buffer = evt.target.result;
+        let text;
+
+        try {
+            text = detectAndDecode(buffer);
+        } catch (err) {
+            console.error('デコードエラー:', err);
+            showToast('ファイルの読み込みに失敗しました（文字コード判定エラー）');
+            return;
+        }
+
+        loadedRawText = text;
+
+        const dropText = document.getElementById('drop-text');
+        if (dropText) {
+            dropText.innerHTML = `読み込み完了: <strong>${file.name}</strong>`;
+        }
+
+        processCurrentText();
+    };
+
+    reader.onerror = function() {
+        showToast('ファイルの読み込みに失敗しました');
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// ===== 文字エンコーディングの自動判定とデコード =====
+// 青空文庫のファイルはShift_JIS（CP932）が大多数だが、近年配布される
+// 一部のXHTML版や、サイトによってはUTF-8の場合もあるため、
+// 「宣言を読む」→「UTF-8として厳密検証する」の二段構えで確実に判定する。
+function detectAndDecode(buffer) {
+    // まずヘッダー部分だけをShift_JISとして仮読みし、charset宣言を確認する
+    // （宣言自体はASCII互換なので、どちらのエンコーディングで読んでも文字列として一致する）
+    const headBytes = buffer.slice(0, 2000);
+    const headerGuess = new TextDecoder('shift_jis').decode(headBytes);
+
+    const declaresShiftJis = /charset=["']?shift[_-]jis["']?|encoding=["']shift[_-]jis["']/i.test(headerGuess);
+    const declaresUtf8 = /charset=["']?utf-8["']?|encoding=["']utf-8["']/i.test(headerGuess);
+
+    if (declaresShiftJis) {
+        return new TextDecoder('shift_jis').decode(buffer);
     }
-    function onDragLeave() {
-        // 必要に応じて処理を追加
+    if (declaresUtf8) {
+        // fatal:true で厳密にデコードし、本当にUTF-8として正しいか確認する
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        } catch (e) {
+            // 宣言と実体が異なる不正なファイルへの保険
+            return new TextDecoder('shift_jis').decode(buffer);
+        }
     }
 
-    function handleFile(file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            loadedRawText = evt.target.result;
-            document.getElementById('drop-text').innerHTML = `読み込み完了: <strong style="color: var(--success);">${file.name}</strong><br><small>設定を変更すると自動で再計算されます</small>`;
-            processCurrentText();
-        };
-        reader.readAsText(file, 'UTF-8');
+    // 宣言が見つからない場合：UTF-8として厳密デコードを試み、
+    // 失敗（不正なバイト列を検出）したら確実にShift_JISと判断する。
+    // これはスコア多数決よりも確実（UTF-8として不正なバイト列は
+    // 純粋なUTF-8テキストには絶対に出現しないため）。
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    } catch (e) {
+        return new TextDecoder('shift_jis').decode(buffer);
     }
+}
+
 
     // JSONP通信によるCORS回避フェッチ用グローバルコールバック空間
     window.__allOriginsJsonpCallbacks = window.__allOriginsJsonpCallbacks || {};
@@ -639,13 +753,10 @@
                 if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 
                 const buffer = await res.arrayBuffer();
-                
-                // デコード処理
-                let decodedText = new TextDecoder('utf-8').decode(buffer);
-                if (decodedText.includes('') || decodedText.includes('？')) {
-                    decodedText = new TextDecoder('shift_jis').decode(buffer);
-                }
-                
+
+                // デコード処理（ファイル読み込みと同じ確実な判定方式に統一）
+                const decodedText = detectAndDecode(buffer);
+
                 fetchedText = decodedText;
                 successRoute = proxy.name;
                 isSuccess = true;
@@ -680,6 +791,57 @@
         processCurrentText();
     }
 
+    // ===== 章見出し検出（XHTML版タグ／テキスト版注記／単独行の章番号） =====
+    // 検出した見出しを \x01テキスト\x01 という制御文字マーカーに変換して返す。
+    // この後に続く［＃…］注記削除やタグ削除をくぐり抜けられるよう、
+    // 本文中に絶対出現しない制御文字（\x01）を区切りに使う。
+    const HEADING_MARK = '\x01';
+
+    function extractHeadingMarkers(text) {
+        // --- (a) XHTML版：見出しタグ（大/中/小、通常・同行・窓見出し） ---
+        // 例: <h4 class="naka-midashi">第一章 戦争史の大観</h4>
+        text = text.replace(
+            /<h[1-6][^>]*class=["'][^"']*(?:o-midashi|naka-midashi|ko-midashi)[^"']*["'][^>]*>([\s\S]*?)<\/h[1-6]>/gi,
+            (match, inner) => {
+                const plain = inner.replace(/<[^>]+>/g, '').trim();
+                return plain ? `${HEADING_MARK}${plain}${HEADING_MARK}` : match;
+            }
+        );
+
+        // --- (b) テキスト版：開始／終了型 ［＃中見出し］見出し［＃中見出し終わり］ ---
+        text = text.replace(
+            /［＃(?:大|中|小)見出し］([^［\n]+?)［＃(?:大|中|小)見出し終わり］/g,
+            (match, inner) => `${HEADING_MARK}${inner.trim()}${HEADING_MARK}`
+        );
+
+        // --- (c) テキスト版：前方参照型 見出し文字列［＃「見出し文字列」は（大/中/小/同行大/同行中/同行小）見出し］ ---
+        text = text.replace(
+            /([^\n］]{1,40})［＃「\1」は(?:同行)?(?:大|中|小)見出し］/g,
+            (match, inner) => `${HEADING_MARK}${inner.trim()}${HEADING_MARK}`
+        );
+
+        // --- (d) 章番号のみの独立行（見出し注記が無い簡易な底本向けの補助検出） ---
+        // 例: 単独行の「一」「二」「三」、「第一章」「１」「上」「下」など。
+        // 誤検出を避けるため、短い行（全角約20文字以内）かつ前後が改行で
+        // 区切られている場合のみ対象にする。
+        const lines = text.split('\n');
+        const headingLinePattern = /^(?:[一二三四五六七八九十百千〇0-9０-９]{1,4}|第[一二三四五六七八九十百千0-9０-９]{1,4}[章節回部編幕]|[上中下]|[０-９0-9]{1,3})$/;
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            if (
+                trimmed &&
+                trimmed.length <= 20 &&
+                headingLinePattern.test(trimmed) &&
+                !trimmed.includes(HEADING_MARK)
+            ) {
+                lines[i] = `${HEADING_MARK}${trimmed}${HEADING_MARK}`;
+            }
+        }
+        text = lines.join('\n');
+
+        return text;
+    }
+
     // ===== 青空文庫テキストのパース処理核心部 =====
     function processCurrentText() {
         if (!loadedRawText) return;
@@ -688,7 +850,7 @@
         const chunkSize = parseInt(document.getElementById('chunk-size').value, 10);
         const rubyMode = document.getElementById('ruby-mode').value;
         const gridCols = parseInt(document.getElementById('grid-cols').value, 10);
-        const titlePrefix = document.getElementById('title-prefix').value.trim() || "[#]";
+        const titlePrefix = document.getElementById('title-prefix').value.trim();
 
         // 1. タイトルと著者の自動抽出
         let lines = loadedRawText.split('\n').map(l => l.trim());
@@ -791,16 +953,20 @@ console.log("RT=", rt?.textContent);
 
     mainText = doc.body.innerHTML;
 }
-        console.log(
-  "RUBY後:",
-  mainText.substring(0,500)
-);
 
 // 埋め込みスクリプト・広告コード除去
 mainText = mainText.replace(/<script[\s\S]*?<\/script>/gi, '');
 mainText = mainText.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
 mainText = mainText.replace(/\(function\(\)\{function c\(\)[\s\S]*$/i, '');
 mainText = mainText.replace(/if\(b\)\.\.\.[\s\S]*$/i, '');
+
+// ===== 章見出しの検出（タグ削除・注記削除より前に行う） =====
+// 検出した見出しは \x01見出しテキスト\x01 という専用マーカーに変換し、
+// 後続の注記削除・タグ削除処理を素通りさせてからカード分割時に回収する。
+const detectHeading = document.getElementById('title-detect-heading').checked;
+if (detectHeading) {
+    mainText = extractHeadingMarkers(mainText);
+}
 
 // 残りのタグを削除
 mainText = mainText.replace(/<[^>]+>/g, '');
@@ -862,31 +1028,57 @@ mainText = mainText.replace(/　{2,}/g, '　');
         mainText = mainText.replace(/\n\s*\n/g, '\n');
 
         // 4. 文字数目安に基づくカード（小分類）自動分割
+        //    章見出しマーカー（\x01...\x01）を検出した場合は、そこでカードを
+        //    強制的に区切り、見出しテキストをそのカードの見出しタイトルとして記録する。
         let cards = [];
         let paragraphs = mainText.split('\n');
         let currentChunk = "";
+        let pendingHeading = ""; // 直前に検出した見出し（次のカードの先頭に適用）
+        const headingRe = new RegExp(`${HEADING_MARK}([^${HEADING_MARK}]*)${HEADING_MARK}`);
+
+        function flushChunk(headingForThisChunk) {
+            if (currentChunk.trim()) {
+                cards.push({
+                    title: "",
+                    headingTitle: headingForThisChunk || "",
+                    content: currentChunk.trim()
+                });
+            }
+            currentChunk = "";
+        }
 
         for (let i = 0; i < paragraphs.length; i++) {
-            let p = paragraphs[i].trim();
+            let p = paragraphs[i];
+
+            // 見出しマーカーを抽出し、本文からは除去する
+            let headingFoundHere = "";
+            const hMatch = p.match(headingRe);
+            if (hMatch) {
+                headingFoundHere = hMatch[1].trim();
+                p = p.replace(headingRe, '');
+            }
+            p = p.trim();
+
+            if (headingFoundHere) {
+                // 見出しが見つかったら、それまでのバッファを確定し、
+                // 新しいカードはこの見出しから始める。
+                flushChunk(pendingHeading);
+                pendingHeading = headingFoundHere;
+                if (p) currentChunk = p + "\n";
+                continue;
+            }
+
             if (!p) continue;
 
             if ((currentChunk.length + p.length) > chunkSize && currentChunk.length > 0) {
-                // 現時点までのバッファをカード化
-                cards.push({
-                    title: "", // 後で連番を設定
-                    content: currentChunk.trim()
-                });
+                flushChunk(pendingHeading);
+                pendingHeading = ""; // 見出しは最初のカードにのみ適用
                 currentChunk = p + "\n";
             } else {
                 currentChunk += p + "\n";
             }
         }
-        if (currentChunk.trim()) {
-            cards.push({
-                title: "",
-                content: currentChunk.trim()
-            });
-        }
+        flushChunk(pendingHeading);
 
         // 万一、1枚のカードが極端に長い場合の安全なさらなる分割
         let finalCards = [];
@@ -896,25 +1088,37 @@ mainText = mainText.replace(/　{2,}/g, '　');
                 // 文末を探して分割
                 let sentences = content.split(/(?<=[。！？])/);
                 let subChunk = "";
+                let isFirstSub = true;
                 sentences.forEach(s => {
                     if ((subChunk.length + s.length) > chunkSize) {
-                        finalCards.push({ title: "", content: subChunk.trim() });
+                        finalCards.push({ title: "", headingTitle: isFirstSub ? card.headingTitle : "", content: subChunk.trim() });
+                        isFirstSub = false;
                         subChunk = s;
                     } else {
                         subChunk += s;
                     }
                 });
-                if (subChunk.trim()) finalCards.push({ title: "", content: subChunk.trim() });
+                if (subChunk.trim()) finalCards.push({ title: "", headingTitle: isFirstSub ? card.headingTitle : "", content: subChunk.trim() });
             } else {
                 finalCards.push(card);
             }
         });
 
         // タイトルの自動付与ルールを適用
+        // 優先順位: ① 本文から検出した章見出し → ② 連番ルール（[#]を連番に置換） → ③ 空欄（タイトルなし）
+        const titleNoneChecked = document.getElementById('title-none').checked;
         finalCards.forEach((card, idx) => {
-            let label = String(idx + 1);
-            let displayTitle = titlePrefix.replace('[#]', label);
-            card.title = displayTitle;
+            if (card.headingTitle) {
+                // 検出した章見出しを最優先で採用
+                card.title = card.headingTitle;
+            } else if (titleNoneChecked || !titlePrefix) {
+                // タイトルなし指定、または連番ルール欄が空欄の場合はタイトルを付けない
+                card.title = "";
+            } else {
+                let label = String(idx + 1);
+                card.title = titlePrefix.replace('[#]', label);
+            }
+            delete card.headingTitle;
         });
 
         // データ空間へ反映
@@ -993,7 +1197,12 @@ mainText = mainText.replace(/　{2,}/g, '　');
             
             const title = document.createElement('div');
             title.className = 'card-mini-title';
-            title.textContent = `カード ${idx + 1} : ${card.title}`;
+            const titleLabel = card.title ? card.title : '（タイトルなし）';
+            title.textContent = `カード ${idx + 1} : ${titleLabel}`;
+            if (!card.title) {
+                title.style.color = 'var(--text-dim)';
+                title.style.fontStyle = 'italic';
+            }
 
             const content = document.createElement('div');
             content.className = 'card-mini-content';
