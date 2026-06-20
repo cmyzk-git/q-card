@@ -1848,21 +1848,6 @@
         </div>
     </div>
 
-    <!-- [NEW] カード表示サイズ（オーバーレイの幅・高さ） -->
-    <div class="mob-drawer-section">
-        <div class="mob-drawer-label">カード表示サイズ</div>
-        <div class="mob-drawer-row">
-            <label>幅</label>
-            <input type="range" id="widthSliderMob" min="20" max="98" value="85">
-            <span class="mob-drawer-val" id="widthValMob">85%</span>
-        </div>
-        <div class="mob-drawer-row">
-            <label>高さ</label>
-            <input type="range" id="heightSliderMob" min="20" max="95" value="55">
-            <span class="mob-drawer-val" id="heightValMob">55%</span>
-        </div>
-    </div>
-
     <div class="mob-drawer-section">
         <div class="mob-drawer-label">テーマ</div>
         <div class="mob-drawer-row">
@@ -2096,6 +2081,8 @@
                 <button class="modal-btn" onclick="copyToClipboard('active')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
                 <button class="modal-btn" onclick="exportActiveJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
                 <button class="modal-btn" onclick="exportActiveCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <!-- [NEW] Markdown出力 -->
+                <button class="modal-btn" onclick="exportActiveMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">ファイル名：シナリオ名-列数-日時</div>
         </div>
@@ -2106,8 +2093,10 @@
                 <button class="modal-btn" onclick="copyToClipboard('all')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
                 <button class="modal-btn" onclick="exportJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
                 <button class="modal-btn" onclick="exportCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <!-- [NEW] Markdown出力（全シナリオ） -->
+                <button class="modal-btn" onclick="exportMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
-            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">JSON：完全バックアップ（推奨）／CSV：表計算ソフト対応</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">JSON：完全バックアップ（推奨）／CSV：表計算ソフト対応／MD：閲覧・共有向け</div>
         </div>
         <!-- [NEW] 録音データ -->
         <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
@@ -2127,6 +2116,11 @@
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">⚠️ 現在のデータは上書きされます</div>
             <input type="file" id="importFileJSON" accept=".json" style="display:none" onchange="importJSON(event)">
             <input type="file" id="importFileCSV"  accept=".csv"  style="display:none" onchange="importCSV(event)">
+            <!-- [NEW] 貼り付けで読み込み（JSON / Markdownを自動判定） -->
+            <div style="margin-top:12px;">
+                <textarea id="paste-import-area" placeholder="ここにJSONまたはMarkdownを貼り付け…" style="width:100%;height:64px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.72rem;padding:8px 10px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;"></textarea>
+                <button class="modal-btn" style="width:100%;margin-top:6px;" onclick="importFromPaste()"><span class="modal-btn-icon">📥</span><span>貼り付けた内容を読み込む</span></button>
+            </div>
         </div>
     </div>
 </div>
@@ -3340,6 +3334,119 @@ function exportActiveCSV() {
 function csvEscape(str) {
     var s = String(str).replace(/"/g, '""');
     return /[,"\r\n]/.test(s) ? '"' + s + '"' : s;
+}
+
+// [NEW] Markdown形式の生成（1シナリオ分）
+// # シナリオ名
+//
+// ## カードタイトル
+// 内容
+function buildScenarioMD(s) {
+    var lines = ['# ' + (s.name || 'シナリオ'), ''];
+    (s.data || []).forEach(function(card) {
+        if (!card.title && !card.content) return;
+        lines.push('## ' + (card.title || '（タイトルなし）'));
+        lines.push('');
+        if (card.content) lines.push(card.content);
+        lines.push('');
+    });
+    return lines.join('\n').trim() + '\n';
+}
+
+// [NEW] このシナリオをMarkdownでダウンロード
+function exportActiveMD() {
+    var a = getActive(); if (!a) return;
+    var blob = new Blob([buildScenarioMD(a)], { type: 'text/markdown;charset=utf-8' });
+    downloadBlob(blob, activeFilename('md'));
+    showToast('このシナリオをMarkdown保存'); closeDataModal();
+}
+
+// [NEW] 全シナリオをMarkdownでダウンロード（シナリオ毎に区切り線）
+function exportMD() {
+    var md = scenarios.map(function(s){ return buildScenarioMD(s); }).join('\n---\n\n');
+    var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    downloadBlob(blob, 'qcard_' + today() + '.md');
+    showToast('全シナリオをMarkdown保存'); closeDataModal();
+}
+
+// [NEW] Markdownテキストをパースしてscenarios形式に変換
+// # シナリオ名 → 新シナリオ開始 / ## タイトル → カード開始 / それ以外 → 本文に追記
+function parseMarkdownToScenarios(text) {
+    var lines = text.split(/\r?\n/);
+    var resultScenarios = [];
+    var curScenario = null;
+    var curCard     = null;
+
+    function pushCard() {
+        if (curCard && (curCard.title.trim() || curCard.content.trim())) {
+            curCard.content = curCard.content.trim();
+            curScenario.data.push(curCard);
+        }
+        curCard = null;
+    }
+    function pushScenario() {
+        pushCard();
+        if (curScenario) resultScenarios.push(curScenario);
+        curScenario = null;
+    }
+
+    lines.forEach(function(line) {
+        var h1 = line.match(/^#\s+(.+)/);
+        var h2 = line.match(/^##\s+(.+)/);
+        if (h1) {
+            pushScenario();
+            curScenario = { id: uid(), name: h1[1].trim(), cols: 4, data: [] };
+        } else if (h2) {
+            if (!curScenario) curScenario = { id: uid(), name: 'インポート', cols: 4, data: [] };
+            pushCard();
+            curCard = { title: h2[1].trim(), content: '' };
+        } else if (curCard) {
+            curCard.content += (curCard.content ? '\n' : '') + line;
+        }
+    });
+    pushScenario();
+    return resultScenarios.filter(function(s){ return s.data.length > 0; });
+}
+
+// [NEW] 貼り付けエリアの内容を自動判定してインポート（JSON優先、失敗時はMarkdownとして解釈）
+function importFromPaste() {
+    var ta = document.getElementById('paste-import-area');
+    var text = ta ? ta.value.trim() : '';
+    if (!text) { showToast('テキストが貼り付けられていません'); return; }
+
+    // ① JSONとして解釈を試みる
+    try {
+        var parsed = JSON.parse(text);
+        if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
+            scenarios = parsed.scenarios;
+            scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
+            activeScenarioId = parsed.activeId || scenarios[0].id;
+            saveScenarios(); renderScenarioTabs();
+            document.getElementById('colsInput').value = getActiveCols();
+            updateGrid();
+            ta.value = '';
+            showToast('JSON（貼り付け）をインポート'); closeDataModal();
+            return;
+        }
+    } catch (e) {
+        // JSONではない → Markdownとして処理
+    }
+
+    // ② Markdownとして解釈
+    var mdScenarios = parseMarkdownToScenarios(text);
+    if (mdScenarios.length === 0) {
+        showToast('読み込めるデータが見つかりませんでした');
+        return;
+    }
+    mdScenarios.forEach(function(s) {
+        if (scenarios.length < 8) scenarios.push(s);
+    });
+    activeScenarioId = mdScenarios[0].id;
+    saveScenarios(); renderScenarioTabs();
+    document.getElementById('colsInput').value = getActiveCols();
+    updateGrid();
+    ta.value = '';
+    showToast('Markdown（貼り付け）をインポート'); closeDataModal();
 }
 
 function importJSON(e) {
@@ -4995,17 +5102,6 @@ function mobDrawerOpen() {
         document.getElementById('fontSizeSliderMob').value = f.value;
         document.getElementById('fontSizeValMob').textContent = f.value + 'px';
     }
-    // [NEW] 幅・高さスライダーをPC側（currentWidth/currentHeight）と同期
-    var wMobDrawer = document.getElementById('widthSliderMob');
-    var hMobDrawer = document.getElementById('heightSliderMob');
-    if (wMobDrawer) {
-        wMobDrawer.value = currentWidth;
-        document.getElementById('widthValMob').textContent = currentWidth + '%';
-    }
-    if (hMobDrawer) {
-        hMobDrawer.value = currentHeight;
-        document.getElementById('heightValMob').textContent = currentHeight + '%';
-    }
     // テーマアイコン同期
     var icon = document.getElementById('themeIcon');
     if (icon) document.getElementById('mobThemeIcon').textContent = icon.textContent;
@@ -5042,24 +5138,6 @@ function mobDrawerClose() {
             cMob.addEventListener('change', function() {
                 var c = document.getElementById('colsInput');
                 if (c) { c.value = this.value; c.dispatchEvent(new Event('change')); }
-            });
-        }
-        // [NEW] カード表示サイズ：幅スライダー → PC側widthSliderに反映
-        var widthSliderMobEl = document.getElementById('widthSliderMob');
-        if (widthSliderMobEl) {
-            widthSliderMobEl.addEventListener('input', function() {
-                document.getElementById('widthValMob').textContent = this.value + '%';
-                var wDesktop = document.getElementById('widthSlider');
-                if (wDesktop) { wDesktop.value = this.value; wDesktop.dispatchEvent(new Event('input')); }
-            });
-        }
-        // [NEW] カード表示サイズ：高さスライダー → PC側heightSliderに反映
-        var heightSliderMobEl = document.getElementById('heightSliderMob');
-        if (heightSliderMobEl) {
-            heightSliderMobEl.addEventListener('input', function() {
-                document.getElementById('heightValMob').textContent = this.value + '%';
-                var hDesktop = document.getElementById('heightSlider');
-                if (hDesktop) { hDesktop.value = this.value; hDesktop.dispatchEvent(new Event('input')); }
             });
         }
     });
