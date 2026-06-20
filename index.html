@@ -423,6 +423,8 @@
         .field-row.content-row { flex: 1; padding-right: 18px; display: flex; }
         .field-row.content-row .field-clear-btn { top: 2px; }
         body.view-mode .field-clear-btn { display: none; }
+        /* [NEW] 朗読モード中も×ボタンを非表示 */
+        body.reading-mode .field-clear-btn { display: none; }
 
         /* ─── OVERLAY ─── */
         #overlay-backdrop {
@@ -2686,7 +2688,8 @@ function createItem(index, d) {
         return function() {
             if (isLocked) return;
             clearTimeout(hideTimeout);
-            showOverlay(t.value, c.value);
+            // [MOD] 朗読モードでもホバーでプレビュー表示する（本文クリックで朗読開始するため）
+            showOverlay(t.value, c.value, item);
         };
     })(titleInput, contentTextarea));
 
@@ -2698,7 +2701,10 @@ function createItem(index, d) {
     item.addEventListener('click', (function(t, c) {
         return function(e) {
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.classList.contains('drag-handle')) return;
-            if (appMode === 'view' || c.value.trim() || t.value.trim()) {
+            // [MOD] 朗読モード中はカード本体クリックでの全文朗読開始は行わない
+            // （オーバーレイ内の文節クリックで該当箇所から開始する方式に統一）
+            if (appMode === 'reading') return;
+            if (appMode === 'view' || appMode === 'interview' || c.value.trim() || t.value.trim()) {
                 isLocked = true;
                 showOverlay(t.value, c.value, item);
             }
@@ -2826,7 +2832,12 @@ function showOverlay(title, text, cardItem) {
     if (cardItem !== undefined) editCardItem = cardItem;
     overlayTitle.innerText = title;
     overlayTitle.style.display = title.trim() ? 'block' : 'none';
-    overlayText.innerHTML  = buildSpeechSentenceHTML(text);
+    // [MOD] 朗読モード中は文節クリックで「そこから朗読開始」できるHTMLを生成
+    if (typeof appMode !== 'undefined' && appMode === 'reading' && typeof rdSplitSentences === 'function') {
+        overlayText.innerHTML = buildReadingSentenceHTML(text);
+    } else {
+        overlayText.innerHTML = buildSpeechSentenceHTML(text);
+    }
     overlayText.style.fontSize = currentFontSize + 'px';
     overlay.style.display  = 'flex';
     if (!overlay.dataset.dragged) {
@@ -2834,9 +2845,9 @@ function showOverlay(title, text, cardItem) {
         overlay.style.top  = '50%';
         overlay.style.left = '50%';
     }
-    // edit-mode-btn: hide in view/interview mode
+    // edit-mode-btn: hide in view/interview/reading mode
     var emb = document.getElementById('edit-mode-btn');
-    if (emb) emb.style.display = (appMode === 'view' || appMode === 'interview') ? 'none' : '';
+    if (emb) emb.style.display = (appMode === 'view' || appMode === 'interview' || appMode === 'reading') ? 'none' : '';
 
     // size-bar の表示値を現在値に同期
     syncSizeBar();
@@ -2857,6 +2868,26 @@ function showOverlay(title, text, cardItem) {
         itvHideHistory();
     }
 }
+
+// [NEW] 朗読モード専用：文節spanを生成し、クリックでその文節から朗読開始できるようにする
+function buildReadingSentenceHTML(text) {
+    if (!text) return '';
+    var sentences = rdSplitSentences(text);
+    var html = '';
+    sentences.forEach(function(s, i) {
+        html += '<span class="speech-sentence" onclick="rdStartFromOverlaySentence(' + i + ')">' + escapeHtml(s) + '</span>';
+    });
+    return html;
+}
+
+// [NEW] オーバーレイ内の文節クリック → その文節からそのカードを起点に朗読開始
+window.rdStartFromOverlaySentence = function(contentSentIdx) {
+    if (!editCardItem) return;
+    var t = editCardItem.querySelector('.title-input');
+    var titleOffset = (typeof rdReadTitle !== 'undefined' && rdReadTitle && t && t.value) ? 1 : 0;
+    var fromSentIdx = contentSentIdx + titleOffset;
+    window.rdStartFrom(editCardItem, fromSentIdx);
+};
 
 function hideOverlay() {
     exitEditMode();
@@ -4574,19 +4605,42 @@ function rdHighlight(idx) {
         // PC：停止後に再生した時、進行中だったカードへ戻れるよう記憶を更新
         window._mobCurrentEl = rdItems[idx].el;
     }
+    // [NEW] PC：オーバーレイが開いている場合、朗読中のカードに合わせて表示内容も自動切替する
+    if (window.innerWidth > 640 && rdItems[idx] && overlay && overlay.style.display !== 'none') {
+        var newItem = rdItems[idx].el;
+        if (editCardItem !== newItem) {
+            var t = newItem.querySelector('.title-input');
+            var c = newItem.querySelector('.content-textarea');
+            isLocked = true;
+            showOverlay(t ? t.value : '', c ? c.value : '', newItem);
+        }
+    }
 }
 
 // モバイル文節UIのハイライトをrdSentIdxに同期
 // 重要：現在「表示されているカード」が「朗読中のカード」と一致する場合のみハイライトする
 function rdHighlightMobSentence() {
     var sentEl = document.getElementById('mobile-card-sentences');
-    if (!sentEl) return;
-    // 表示中カードと朗読中カードが一致しているか確認
-    var isMatchingCard = rdItems[rdIdx] && window._mobCurrentEl === rdItems[rdIdx].el;
-    sentEl.querySelectorAll('.mob-sentence').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
-    if (!isMatchingCard) return;
-    var target = sentEl.querySelector('.mob-sentence[data-idx="' + rdSentIdx + '"]');
-    if (target) target.classList.add('mob-sentence-active');
+    if (sentEl) {
+        var isMatchingCard = rdItems[rdIdx] && window._mobCurrentEl === rdItems[rdIdx].el;
+        sentEl.querySelectorAll('.mob-sentence').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+        if (isMatchingCard) {
+            var target = sentEl.querySelector('.mob-sentence[data-idx="' + rdSentIdx + '"]');
+            if (target) target.classList.add('mob-sentence-active');
+        }
+    }
+    // [NEW] PC：オーバーレイが開いている場合、その中の文節（.speech-sentence）もハイライト
+    if (overlay && overlay.style.display !== 'none' && editCardItem && rdItems[rdIdx] && editCardItem === rdItems[rdIdx].el) {
+        var ovSentences = overlayText.querySelectorAll('.speech-sentence');
+        ovSentences.forEach(function(s){ s.classList.remove('speech-active'); });
+        var d = rdItems[rdIdx];
+        var titleOffset = (rdReadTitle && d && d.title) ? 1 : 0;
+        var ovIdx = rdSentIdx - titleOffset;
+        if (ovIdx >= 0 && ovSentences[ovIdx]) {
+            ovSentences[ovIdx].classList.add('speech-active');
+            ovSentences[ovIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
 }
 
 // カード内の指定文節インデックスから読み上げ（文単位で一時停止再開を実現）
@@ -4743,6 +4797,8 @@ window.rdStop = function() {
     window._mobIdx = undefined;
     grid.querySelectorAll('.grid-item.reading-active').forEach(function(el){ el.classList.remove('reading-active'); });
     document.querySelectorAll('.mob-sentence.mob-sentence-active').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+    // [NEW] PCオーバーレイの文節ハイライトもクリア
+    document.querySelectorAll('.speech-sentence.speech-active').forEach(function(s){ s.classList.remove('speech-active'); });
     rdUpdateUI();
 };
 
@@ -4940,14 +4996,14 @@ function mobDrawerOpen() {
         document.getElementById('fontSizeValMob').textContent = f.value + 'px';
     }
     // [NEW] 幅・高さスライダーをPC側（currentWidth/currentHeight）と同期
-    var wMob = document.getElementById('widthSliderMob');
-    var hMob = document.getElementById('heightSliderMob');
-    if (wMob) {
-        wMob.value = currentWidth;
+    var wMobDrawer = document.getElementById('widthSliderMob');
+    var hMobDrawer = document.getElementById('heightSliderMob');
+    if (wMobDrawer) {
+        wMobDrawer.value = currentWidth;
         document.getElementById('widthValMob').textContent = currentWidth + '%';
     }
-    if (hMob) {
-        hMob.value = currentHeight;
+    if (hMobDrawer) {
+        hMobDrawer.value = currentHeight;
         document.getElementById('heightValMob').textContent = currentHeight + '%';
     }
     // テーマアイコン同期
@@ -4988,22 +5044,22 @@ function mobDrawerClose() {
                 if (c) { c.value = this.value; c.dispatchEvent(new Event('change')); }
             });
         }
-        // [NEW] 幅スライダー → PC側widthSliderに反映
-        var wMob = document.getElementById('widthSliderMob');
-        if (wMob) {
-            wMob.addEventListener('input', function() {
+        // [NEW] カード表示サイズ：幅スライダー → PC側widthSliderに反映
+        var widthSliderMobEl = document.getElementById('widthSliderMob');
+        if (widthSliderMobEl) {
+            widthSliderMobEl.addEventListener('input', function() {
                 document.getElementById('widthValMob').textContent = this.value + '%';
-                var w = document.getElementById('widthSlider');
-                if (w) { w.value = this.value; w.dispatchEvent(new Event('input')); }
+                var wDesktop = document.getElementById('widthSlider');
+                if (wDesktop) { wDesktop.value = this.value; wDesktop.dispatchEvent(new Event('input')); }
             });
         }
-        // [NEW] 高さスライダー → PC側heightSliderに反映
-        var hMob = document.getElementById('heightSliderMob');
-        if (hMob) {
-            hMob.addEventListener('input', function() {
+        // [NEW] カード表示サイズ：高さスライダー → PC側heightSliderに反映
+        var heightSliderMobEl = document.getElementById('heightSliderMob');
+        if (heightSliderMobEl) {
+            heightSliderMobEl.addEventListener('input', function() {
                 document.getElementById('heightValMob').textContent = this.value + '%';
-                var h = document.getElementById('heightSlider');
-                if (h) { h.value = this.value; h.dispatchEvent(new Event('input')); }
+                var hDesktop = document.getElementById('heightSlider');
+                if (hDesktop) { hDesktop.value = this.value; hDesktop.dispatchEvent(new Event('input')); }
             });
         }
     });
