@@ -344,6 +344,15 @@
             height: 160px;
         }
         .content-textarea { overflow-y: auto !important; }
+        .content-textarea::-webkit-scrollbar { width: 3px; }
+        .content-textarea::-webkit-scrollbar-track { background: transparent; }
+        .content-textarea::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+        .content-textarea::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+        /* グリッドラッパー全体の控えめスクロールバー */
+        .grid-wrapper::-webkit-scrollbar { width: 3px; }
+        .grid-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .grid-wrapper::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+        .grid-wrapper::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
         .grid-item:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.3); transform: translateY(-1px); }
         .grid-item.shortcut-active { border-color: var(--success); box-shadow: 0 0 0 2px rgba(45,212,164,0.25); }
         .grid-item.dragging { opacity: 0.35; transform: scale(0.95); border-style: dashed; }
@@ -367,6 +376,9 @@
             cursor: grab; user-select: none; z-index: 10; transition: color 0.15s;
         }
         .drag-handle:hover { color: var(--accent); }
+
+        /* モバイル用タイトルラベル：PC では常に非表示 */
+        .mob-title-label { display: none !important; }
 
         .item-meta { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
         .item-num { font-family: 'DM Mono', monospace; font-size: 0.56rem; color: var(--text-dim); }
@@ -411,6 +423,8 @@
         .field-row.content-row { flex: 1; padding-right: 18px; display: flex; }
         .field-row.content-row .field-clear-btn { top: 2px; }
         body.view-mode .field-clear-btn { display: none; }
+        /* [NEW] 朗読モード中も×ボタンを非表示 */
+        body.reading-mode .field-clear-btn { display: none; }
 
         /* ─── OVERLAY ─── */
         #overlay-backdrop {
@@ -700,6 +714,7 @@
             background: var(--surface); border: 1px solid var(--border);
             border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             z-index: 700; overflow: hidden; user-select: none; transition: box-shadow 0.2s;
+            display: none;
         }
         #timer-widget.minimized #timer-body { display: none; }
         #timer-widget.minimized { width: auto; }
@@ -1051,6 +1066,692 @@
   font-size: 0.65rem; color: white;
   cursor: pointer; z-index: 10001;
 }
+    /* ══════════════════════════════════════
+       MOBILE UI  (≤640px)
+    ══════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+        /* --- TOP BAR: 1行固定ヘッダー --- */
+        .top-bar {
+            padding: 0 12px;
+            height: 48px;
+            gap: 0;
+            flex-wrap: nowrap;
+            overflow: hidden;
+        }
+        /* PC専用要素を全て隠す */
+        .version-badge,
+        .divider,
+        .ctrl-group,
+        .save-indicator,
+        #timerToggleBtn,
+        .top-btn { display: none !important; }
+
+        .app-logo { font-size: 0.9rem; flex: 1; }
+
+        /* モード切替：アイコンのみ */
+        .mode-toggle {
+            gap: 2px;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .mode-btn {
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+        }
+        /* テキストラベル非表示・絵文字のみ */
+        .mode-btn span { display: none; }
+
+        /* テーマトグル：アイコンのみ */
+        .theme-toggle {
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+        }
+        #themeLabel { display: none; }
+
+        /* ハンバーガーメニューボタン */
+        #mob-menu-btn {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 36px; height: 36px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-left: 6px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- ドロワー --- */
+        #mob-drawer {
+            display: block !important;
+            position: fixed;
+            top: 0; right: 0;
+            width: 280px; height: 100%;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            z-index: 5000;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            overflow-y: auto;
+            padding: 0 0 40px;
+        }
+        #mob-drawer.open { transform: translateX(0); }
+        #mob-drawer-overlay {
+            display: block !important;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 4999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        #mob-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .mob-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .mob-drawer-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+        }
+        .mob-drawer-close {
+            background: none; border: none;
+            color: var(--text-dim); font-size: 1.1rem;
+            cursor: pointer; padding: 2px 6px;
+        }
+        .mob-drawer-section {
+            padding: 14px 16px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .mob-drawer-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 10px;
+        }
+        .mob-drawer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mob-drawer-row label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            min-width: 36px;
+        }
+        .mob-drawer-row input[type="number"] {
+            width: 52px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            text-align: center;
+            padding: 5px 4px;
+            font-size: 0.8rem;
+            font-family: 'DM Mono', monospace;
+        }
+        .mob-drawer-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+        .mob-drawer-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+            min-width: 36px;
+            text-align: right;
+        }
+        .mob-drawer-btn {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            margin-bottom: 6px;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-drawer-btn:active { background: var(--surface3); }
+        .mob-drawer-btn.danger { color: var(--danger); }
+
+        /* --- SEARCH + SCENARIO: 統合1行 --- */
+        .search-bar {
+            padding: 6px 10px;
+            gap: 6px;
+        }
+        .search-bar > div[style] { display: none; } /* Ctrl+Fヒント非表示 */
+        #search-input { font-size: 0.78rem; }
+
+        .scenario-bar { display: none !important; }
+
+        /* シナリオセレクト（モバイル専用） */
+        #mob-scenario-wrap {
+            display: flex !important;
+            align-items: center;
+            gap: 6px;
+            padding: 0 10px 6px;
+            flex-shrink: 0;
+        }
+        #mob-scenario-select {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.78rem;
+            padding: 6px 10px;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        #mob-scenario-add {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mob-card-add {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mob-card-add:active { background: var(--surface3); }
+
+        /* 表示モード切替トグル */
+        #mob-view-toggle {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2px;
+        }
+        .mob-view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            border-radius: 6px;
+            width: 30px; height: 28px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-view-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* グリッド表示モード（モバイル） */
+        body.mob-grid .grid-container { display: flex !important; flex-direction: column; gap: 0; }
+        body.mob-grid .grid-wrapper { overflow-y: auto; padding: 0; }
+        body.mob-grid #mobile-swipe-wrap { display: none !important; }
+
+        /* 1列：チャプターリスト */
+        body.mob-grid1 .grid-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+            padding: 8px !important;
+            width: 100%;
+            height: auto !important;
+            box-sizing: border-box;
+        }
+        body.mob-grid1 .grid-item {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 44px !important;
+            padding: 0 12px;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center;
+            gap: 0;
+            box-shadow: none !important;
+            flex-shrink: 0;
+        }
+        body.mob-grid1 .item-meta,
+        body.mob-grid1 .title-input,
+        body.mob-grid1 .content-textarea,
+        body.mob-grid1 .drag-handle { display: none !important; }
+        body.mob-grid1 .mob-title-label {
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            gap: 0;
+            width: 100%;
+            min-width: 0;
+            padding: 11px 0;
+        }
+        body.mob-grid1 .mob-num-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            flex-shrink: 0;
+            white-space: nowrap;
+            min-width: 36px;
+            text-align: right;
+            padding-right: 12px;
+            border-right: 1px solid var(--border);
+            margin-right: 14px;
+        }
+        body.mob-grid1 .mob-title-text {
+            flex: 1;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+        /* 1列リスト表示時は×ボタン・フィールド行を非表示 */
+        body.mob-grid1 .field-clear-btn,
+        body.mob-grid1 .field-row { display: none !important; }
+        body.mob-grid1 .grid-item::after {
+            content: '›';
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-left: 6px;
+        }
+
+        /* 2列：コンパクトカード */
+        body.mob-grid2 .grid-container {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px;
+            padding: 8px;
+            width: 100%;
+            height: auto !important;
+            box-sizing: border-box;
+        }
+        body.mob-grid2 .grid-item {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 64px !important;
+            padding: 10px;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start;
+            box-shadow: none !important;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        body.mob-grid2 .item-meta {
+            display: flex !important;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 4px;
+        }
+        body.mob-grid2 .shortcut-badge { display: none !important; }
+        body.mob-grid2 .item-num {
+            font-size: 0.58rem;
+            color: var(--text-dim);
+        }
+        body.mob-grid2 .field-clear-btn,
+        body.mob-grid2 .content-textarea,
+        body.mob-grid2 .drag-handle,
+        body.mob-grid2 .title-input { display: none !important; }
+        .mob-title-label { display: none; }
+        body.mob-grid1 .mob-title-label { display: block !important; }
+        body.mob-grid2 .mob-title-label {
+            display: block !important;
+            width: 100%;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.45;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+        body.mob-grid2 .mob-num-label { display: none !important; }
+        body.mob-grid2 .mob-title-text {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.45;
+            white-space: normal;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+
+        /* --- GRID → スワイプUI --- */
+        .grid-wrapper {
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+        }
+        /* グリッドモード時は縦スクロール */
+        body.mob-grid .grid-wrapper {
+            overflow-y: auto;
+            overflow-x: hidden;
+            align-items: flex-start;
+        }
+        /* 控えめなスクロールバー */
+        body.mob-grid .grid-wrapper::-webkit-scrollbar { width: 3px; }
+        body.mob-grid .grid-wrapper::-webkit-scrollbar-track { background: transparent; }
+        body.mob-grid .grid-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 3px;
+        }
+        .grid-container { display: none !important; }
+        #mobile-swipe-wrap {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+        #mobile-card {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin: 10px 10px 6px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+        #mobile-card.slide-left  { transform: translateX(-60px); opacity: 0; }
+        #mobile-card.slide-right { transform: translateX(60px);  opacity: 0; }
+        #mobile-card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.4;
+            outline: none;
+        }
+        #mobile-card-content {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            flex: 1;
+            white-space: pre-wrap;
+            outline: none;
+        }
+        .mob-editable {
+            cursor: text;
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin: -4px -6px;
+            transition: background 0.15s;
+        }
+        .mob-editable:focus {
+            background: var(--surface2);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+        #mobile-card-title.mob-editable:empty::before {
+            content: 'タイトルを入力';
+            color: var(--text-dim);
+        }
+        #mobile-card-content.mob-editable:empty::before {
+            content: '本文を入力';
+            color: var(--text-dim);
+        }
+        #mob-speech-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px 4px;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        #mob-speech-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 7px 18px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.15s;
+        }
+        #mob-speech-btn.speaking {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(61,139,255,0.1);
+        }
+        #mob-speech-rate {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 6px;
+            padding: 5px 6px;
+            font-size: 0.72rem;
+        }
+
+        /* 朗読モード：文節タップUI */
+        #reading-bar {
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px 10px;
+        }
+        #rd-rate-wrap { order: 10; }
+        #rd-rate-popover {
+            width: 168px;
+            max-width: calc(100vw - 16px);
+        }
+        .rd-rate-btn { padding: 5px 9px; font-size: 0.7rem; }
+        #rd-hint { display: none; }
+        body.reading-mode #mobile-card-content { display: none; }
+        body.reading-mode #mobile-card-sentences { display: block !important; }
+        #mobile-card-sentences {
+            font-size: 0.88rem;
+            line-height: 2.0;
+            color: var(--text-muted);
+            flex: 1;
+            overflow-y: auto;
+        }
+        .mob-sentence {
+            display: inline;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 1px 2px;
+            transition: background 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-sentence:active,
+        .mob-sentence.mob-sentence-active {
+            background: rgba(167,139,250,0.18);
+            color: var(--text);
+        }
+        #mobile-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 16px 12px;
+            flex-shrink: 0;
+        }
+        .mob-nav-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 50%;
+            width: 46px; height: 46px;
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.12s;
+        }
+        .mob-nav-btn:active { background: var(--surface3); transform: scale(0.92); }
+        #mobile-counter {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        #mobile-swipe-wrap { display: none; }
+    }
+
+    @media (min-width: 641px) {
+        #mobile-swipe-wrap  { display: none !important; }
+        #mob-scenario-wrap  { display: none !important; }
+        #mob-menu-btn       { display: none !important; }
+        #mob-drawer         { display: none !important; }
+        #mob-drawer-overlay { display: none !important; }
+    }
+
+    /* ─── READING MODE ─── */
+    .mode-btn.active.reading-mode-btn { color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+    body.reading-mode .grid-item { cursor: pointer; }
+    body.reading-mode .drag-handle { display: none; }
+    body.reading-mode .title-input,
+    body.reading-mode .content-textarea { pointer-events: none; user-select: none; }
+    body.reading-mode .grid-item.reading-active {
+        border-color: #a78bfa !important;
+        box-shadow: 0 0 0 2px rgba(167,139,250,0.2) !important;
+    }
+    /* 朗読バー */
+    #reading-bar {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        padding: 8px 14px;
+        flex-shrink: 0;
+    }
+    body.reading-mode #reading-bar { display: flex; }
+    .rd-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 6px;
+        padding: 5px 11px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+    .rd-btn:hover { border-color: var(--border2); color: var(--text); }
+    .rd-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .rd-btn.active { color: #a78bfa; border-color: #a78bfa; background: rgba(167,139,250,0.08); }
+    #rd-info {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.65rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+        flex: 1;
+    }
+    #rd-hint {
+        font-size: 0.62rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+    #rd-title-toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+        user-select: none;
+    }
+    #rd-title-toggle-label input { accent-color: #a78bfa; cursor: pointer; }
+
+    /* 控えめな速度トリガー＋ポップオーバー */
+    #rd-rate-wrap { position: relative; flex-shrink: 0; }
+    #rd-rate-trigger {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        border-radius: 6px;
+        padding: 4px 9px;
+        font-size: 0.68rem;
+        font-family: 'DM Mono', monospace;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+    }
+    #rd-rate-trigger:hover { color: var(--text); border-color: var(--border2); }
+    #rd-rate-current { color: #a78bfa; font-weight: 700; }
+    #rd-rate-popover {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        right: 0;
+        left: auto;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 5px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        gap: 3px;
+        flex-wrap: wrap;
+        width: 168px;
+        max-width: calc(100vw - 24px);
+        z-index: 200;
+    }
+    #rd-rate-popover.open { display: flex; }
+    .rd-rate-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        border-radius: 5px;
+        padding: 4px 7px;
+        font-size: 0.68rem;
+        font-family: 'DM Mono', monospace;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+    }
+    .rd-rate-btn:hover { color: var(--text); border-color: var(--border2); }
+    .rd-rate-btn.selected {
+        background: rgba(167,139,250,0.15);
+        border-color: #a78bfa;
+        color: #a78bfa;
+        font-weight: 700;
+    }
+    /* 朗読モード時はカード単体読み上げUIを非表示 */
+    body.reading-mode #mob-speech-area { display: none !important; }
     </style>
 </head>
 <body class="edit-mode-active">
@@ -1065,7 +1766,7 @@
     <div class="mode-toggle">
         <button class="mode-btn edit-mode-tab active" id="editModeBtn" onclick="setAppMode('edit')">✏️ 編集</button>
         <button class="mode-btn view-mode" id="viewModeBtn" onclick="setAppMode('view')">👁 閲覧</button>
-        <!-- [NEW] 録音練習モードボタン -->
+        <button class="mode-btn reading-mode-btn" id="readingModeBtn" onclick="setAppMode('reading')">📖 朗読</button>
         <button class="mode-btn interview-mode" id="interviewModeBtn" onclick="setAppMode('interview')">🎤 録音</button>
     </div>
 
@@ -1073,10 +1774,10 @@
 
     <div class="ctrl-group">
         <label>行</label>
-        <input type="number" id="rowsInput" min="1" max="999" value="4" class="num"><!-- 行 -->
+        <input type="number" id="rowsInput" min="1" max="999" value="4" class="num">
         <span style="color:var(--text-dim);font-size:0.7rem;">x</span>
         <label>列</label>
-        <input type="number" id="colsInput" min="1" max="99"  value="4" class="num"><!-- 列 -->
+        <input type="number" id="colsInput" min="1" max="99"  value="4" class="num">
     </div>
     <div class="divider"></div>
     <div class="ctrl-group">
@@ -1109,9 +1810,66 @@
     </div>
 
     <div style="flex:1"></div>
+    <div class="top-btn" id="timerToggleBtn" onclick="toggleTimerWidget()">⏱ TIMER</div>
     <div class="top-btn" onclick="showTutorial()">? ヘルプ</div>
     <div class="top-btn danger" onclick="clearAll()">全消去</div>
     <div class="top-btn" onclick="openDataModal()">データ管理</div>
+
+    <!-- モバイル用ハンバーガーボタン -->
+    <div id="mob-menu-btn" onclick="mobDrawerOpen()">☰</div>
+</div>
+
+<!-- モバイル ドロワーオーバーレイ -->
+<div id="mob-drawer-overlay" onclick="mobDrawerClose()"></div>
+
+<!-- モバイル ドロワー -->
+<div id="mob-drawer">
+    <div class="mob-drawer-header">
+        <span class="mob-drawer-title">設定</span>
+        <button class="mob-drawer-close" onclick="mobDrawerClose()">✕</button>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">グリッド</div>
+        <div class="mob-drawer-row">
+            <label>行</label>
+            <input type="number" id="rowsInputMob" min="1" max="999" value="4">
+            <span style="font-size:0.72rem;color:var(--text-dim)">×</span>
+            <label>列</label>
+            <input type="number" id="colsInputMob" min="1" max="99" value="4">
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">文字サイズ</div>
+        <div class="mob-drawer-row">
+            <input type="range" id="fontSizeSliderMob" min="10" max="100" value="30">
+            <span class="mob-drawer-val" id="fontSizeValMob">30px</span>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">テーマ</div>
+        <div class="mob-drawer-row">
+            <button class="mob-drawer-btn" onclick="toggleTheme(); mobDrawerClose()">
+                <span id="mobThemeIcon">☀️</span> テーマ切替
+            </button>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">タイマー</div>
+        <div class="mob-drawer-row">
+            <button class="mob-drawer-btn" onclick="toggleTimerWidget(); mobDrawerClose()">⏱ タイマーを表示</button>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">データ</div>
+        <button class="mob-drawer-btn" onclick="openDataModal(); mobDrawerClose()">📁 データ管理</button>
+        <button class="mob-drawer-btn" onclick="showTutorial(); mobDrawerClose()">? ヘルプ</button>
+        <button class="mob-drawer-btn danger" onclick="mobDrawerClose(); clearAll()">🗑 全消去</button>
+    </div>
 </div>
 
 <!-- SEARCH BAR -->
@@ -1128,6 +1886,18 @@
     </div>
 </div>
 
+<!-- モバイル シナリオセレクト -->
+<div id="mob-scenario-wrap">
+    <select id="mob-scenario-select" onchange="mobScenarioChange(this.value)"></select>
+    <button id="mob-scenario-add" onclick="addScenario()" title="シナリオ追加">＋</button>
+    <button id="mob-card-add" onclick="addRow()" title="行追加">＋行</button>
+    <div id="mob-view-toggle">
+        <button class="mob-view-btn active" data-view="swipe"  onclick="mobSetView('swipe')"  title="スワイプ">⬜</button>
+        <button class="mob-view-btn"        data-view="grid1"  onclick="mobSetView('grid1')"  title="1列">▤</button>
+        <button class="mob-view-btn"        data-view="grid2"  onclick="mobSetView('grid2')"  title="2列">▦</button>
+    </div>
+</div>
+
 <!-- SCENARIO BAR -->
 <div class="scenario-bar">
     <span class="scenario-bar-label">シナリオ</span>
@@ -1138,6 +1908,61 @@
 <!-- GRID -->
 <div class="grid-wrapper">
     <div class="grid-container" id="grid"></div>
+    <!-- MOBILE SWIPE UI -->
+    <div id="mobile-swipe-wrap">
+        <div id="mobile-card">
+            <div id="mobile-card-title"></div>
+            <div id="mobile-card-content"></div>
+            <!-- 朗読モード用：文節タップ選択 -->
+            <div id="mobile-card-sentences" style="display:none"></div>
+        </div>
+        <div id="mob-speech-area">
+            <!-- 閲覧モード時のみ表示 -->
+            <button id="mob-speech-btn" onclick="mobSpeechToggle()">▶ このカードを読む</button>
+            <select id="mob-speech-rate" onchange="mobSpeechRateChange(this.value)">
+                <option value="0.7">0.7x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.3">1.3x</option>
+                <option value="1.6">1.6x</option>
+                <option value="2.0">2.0x</option>
+            </select>
+        </div>
+        <div id="mobile-nav">
+            <div class="mob-nav-btn" id="mob-prev">‹</div>
+            <span id="mobile-counter">1 / 1</span>
+            <div class="mob-nav-btn" id="mob-next">›</div>
+        </div>
+    </div>
+</div>
+
+<!-- READING BAR -->
+<div id="reading-bar">
+    <button class="rd-btn" id="rd-play-btn"  onclick="rdPlay()">▶ 再生</button>
+    <button class="rd-btn" id="rd-pause-btn" onclick="rdPause()" disabled>⏸</button>
+    <button class="rd-btn" id="rd-stop-btn"  onclick="rdStop()"  disabled>⏹</button>
+    <span id="rd-info">カードをクリックして開始</span>
+    <label id="rd-title-toggle-label">
+        <input type="checkbox" id="rd-title-toggle" checked onchange="rdTitleToggleChange(this.checked)">
+        <span>タイトルも読む</span>
+    </label>
+    <div style="flex:1"></div>
+    <!-- 速度：控えめな折りたたみトリガー -->
+    <div id="rd-rate-wrap">
+        <button id="rd-rate-trigger" onclick="rdToggleRatePopover(event)" title="読み上げ速度">
+            <span id="rd-rate-current">1.0x</span> ⏷
+        </button>
+        <div id="rd-rate-popover">
+            <button class="rd-rate-btn" data-rate="0.7"  onclick="rdSetRate(this)">0.7x</button>
+            <button class="rd-rate-btn" data-rate="1.0"  onclick="rdSetRate(this)" data-default>1.0x</button>
+            <button class="rd-rate-btn" data-rate="1.5"  onclick="rdSetRate(this)">1.5x</button>
+            <button class="rd-rate-btn" data-rate="2.0"  onclick="rdSetRate(this)">2.0x</button>
+            <button class="rd-rate-btn" data-rate="2.5"  onclick="rdSetRate(this)">2.5x</button>
+            <button class="rd-rate-btn" data-rate="3.0"  onclick="rdSetRate(this)">3.0x</button>
+            <button class="rd-rate-btn" data-rate="4.0"  onclick="rdSetRate(this)">4.0x</button>
+            <button class="rd-rate-btn" data-rate="5.0"  onclick="rdSetRate(this)">5.0x</button>
+        </div>
+    </div>
+    <span id="rd-hint">カードをクリック → そこから連続再生</span>
 </div>
 
 <!-- HINT BAR -->
@@ -1392,12 +2217,12 @@ function triggerSave(fn) {
 
 // ===== APP MODE =====
 function setAppMode(mode) {
-    // [MODIFIED] interview モードを追加
     appMode = mode;
     localStorage.setItem('kp_mode', mode);
-    document.body.classList.remove('view-mode', 'edit-mode-active', 'interview-mode');
+    document.body.classList.remove('view-mode', 'edit-mode-active', 'interview-mode', 'reading-mode');
     document.getElementById('editModeBtn').classList.remove('active');
     document.getElementById('viewModeBtn').classList.remove('active');
+    document.getElementById('readingModeBtn').classList.remove('active');
     document.getElementById('interviewModeBtn').classList.remove('active');
 
     if (mode === 'view') {
@@ -1405,17 +2230,31 @@ function setAppMode(mode) {
         document.getElementById('viewModeBtn').classList.add('active');
         showToast('👁 閲覧モード');
         itvClearRecMarks();
+        if (typeof rdStop === "function") rdStop();
+    } else if (mode === 'reading') {
+        document.body.classList.add('reading-mode');
+        document.getElementById('readingModeBtn').classList.add('active');
+        showToast('📖 朗読モード — カードをクリック（またはタップ）して開始');
+        itvClearRecMarks();
+        // rdItemsを事前ビルドしてモバイルでも即再生可能に
+        setTimeout(function() {
+            if (typeof rdBuildItems === 'function') { rdBuildItems(null); rdUpdateUI(); }
+        }, 100);
     } else if (mode === 'interview') {
         document.body.classList.add('interview-mode');
         document.getElementById('interviewModeBtn').classList.add('active');
         showToast('🎤 録音練習モード');
         itvMarkRecordedCards();
+        if (typeof rdStop === "function") rdStop();
     } else {
         document.body.classList.add('edit-mode-active');
         document.getElementById('editModeBtn').classList.add('active');
         showToast('✏️ 編集モード');
         itvClearRecMarks();
+        if (typeof rdStop === "function") rdStop();
     }
+    // モバイルスワイプUIの編集可否・対象データを再同期
+    if (typeof mSync === 'function') { setTimeout(mSync, 0); }
 }
 
 // ===== SCENARIOS =====
@@ -1767,9 +2606,31 @@ function renderGrid(data, total) {
         var d = data[i] || { title: '', content: '' };
         grid.appendChild(createItem(i, d));
     }
+    // モバイルグリッドモード時はタイトルラベルを再同期
+    if (document.body.classList.contains('mob-grid') &&
+        typeof mobSyncTitleLabels === 'function') {
+        mobSyncTitleLabels();
+    }
 }
 
-function addRow() { /* 互換性のため残す */ }
+function addRow() {
+    var active = getActive();
+    if (!active) return;
+    saveCurrentGridData();
+    active.rows = (active.rows || getActiveRows()) + 1;
+    saveScenarios();
+    var rowsEl = document.getElementById('rowsInput');
+    if (rowsEl) rowsEl.value = active.rows;
+    var rowsMob = document.getElementById('rowsInputMob');
+    if (rowsMob) rowsMob.value = active.rows;
+    updateGrid();
+    // スワイプモードなら追加した最後の行の先頭カードへジャンプ
+    if (mobView === 'swipe' && typeof mSetIdx === 'function') {
+        var cols = getActiveCols();
+        var newIdx = (active.rows - 1) * cols;
+        setTimeout(function(){ mSetIdx(newIdx); }, 80);
+    }
+}
 
 function createItem(index, d) {
     var item = document.createElement('div');
@@ -1812,7 +2673,8 @@ function createItem(index, d) {
         return function() {
             if (isLocked) return;
             clearTimeout(hideTimeout);
-            showOverlay(t.value, c.value);
+            // [MOD] 朗読モードでもホバーでプレビュー表示する（本文クリックで朗読開始するため）
+            showOverlay(t.value, c.value, item);
         };
     })(titleInput, contentTextarea));
 
@@ -1824,7 +2686,10 @@ function createItem(index, d) {
     item.addEventListener('click', (function(t, c) {
         return function(e) {
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.classList.contains('drag-handle')) return;
-            if (appMode === 'view' || c.value.trim() || t.value.trim()) {
+            // [MOD] 朗読モード中はカード本体クリックでの全文朗読開始は行わない
+            // （オーバーレイ内の文節クリックで該当箇所から開始する方式に統一）
+            if (appMode === 'reading') return;
+            if (appMode === 'view' || appMode === 'interview' || c.value.trim() || t.value.trim()) {
                 isLocked = true;
                 showOverlay(t.value, c.value, item);
             }
@@ -1952,7 +2817,12 @@ function showOverlay(title, text, cardItem) {
     if (cardItem !== undefined) editCardItem = cardItem;
     overlayTitle.innerText = title;
     overlayTitle.style.display = title.trim() ? 'block' : 'none';
-    overlayText.innerHTML  = buildSpeechSentenceHTML(text);
+    // [MOD] 朗読モード中は文節クリックで「そこから朗読開始」できるHTMLを生成
+    if (typeof appMode !== 'undefined' && appMode === 'reading' && typeof rdSplitSentences === 'function') {
+        overlayText.innerHTML = buildReadingSentenceHTML(text);
+    } else {
+        overlayText.innerHTML = buildSpeechSentenceHTML(text);
+    }
     overlayText.style.fontSize = currentFontSize + 'px';
     overlay.style.display  = 'flex';
     if (!overlay.dataset.dragged) {
@@ -1960,9 +2830,9 @@ function showOverlay(title, text, cardItem) {
         overlay.style.top  = '50%';
         overlay.style.left = '50%';
     }
-    // edit-mode-btn: hide in view/interview mode
+    // edit-mode-btn: hide in view/interview/reading mode
     var emb = document.getElementById('edit-mode-btn');
-    if (emb) emb.style.display = (appMode === 'view' || appMode === 'interview') ? 'none' : '';
+    if (emb) emb.style.display = (appMode === 'view' || appMode === 'interview' || appMode === 'reading') ? 'none' : '';
 
     // size-bar の表示値を現在値に同期
     syncSizeBar();
@@ -1984,10 +2854,33 @@ function showOverlay(title, text, cardItem) {
     }
 }
 
+// [NEW] 朗読モード専用：文節spanを生成し、クリックでその文節から朗読開始できるようにする
+function buildReadingSentenceHTML(text) {
+    if (!text) return '';
+    var sentences = rdSplitSentences(text);
+    var html = '';
+    sentences.forEach(function(s, i) {
+        html += '<span class="speech-sentence" onclick="rdStartFromOverlaySentence(' + i + ')">' + escapeHtml(s) + '</span>';
+    });
+    return html;
+}
+
+// [NEW] オーバーレイ内の文節クリック → その文節からそのカードを起点に朗読開始
+window.rdStartFromOverlaySentence = function(contentSentIdx) {
+    if (!editCardItem) return;
+    var t = editCardItem.querySelector('.title-input');
+    var titleOffset = (typeof rdReadTitle !== 'undefined' && rdReadTitle && t && t.value) ? 1 : 0;
+    var fromSentIdx = contentSentIdx + titleOffset;
+    window.rdStartFrom(editCardItem, fromSentIdx);
+};
+
 function hideOverlay() {
     exitEditMode();
     closeSizePanel();
-    speechReset();
+    // 朗読モード中は連続朗読のspeechSynthesisを止めない
+    if (typeof appMode === 'undefined' || appMode !== 'reading') {
+        speechReset();
+    }
     overlayFindClose();
     // [NEW] 録音モード：録音中なら停止
     if (itvRecording) { itvStopRecording(); }
@@ -2940,6 +3833,14 @@ function doFlash() {
     if (typeof timerSoundOn !== 'undefined' && timerSoundOn) playTimerSound();
 }
 
+function toggleTimerWidget() {
+    var widget = document.getElementById('timer-widget');
+    var btn    = document.getElementById('timerToggleBtn');
+    var visible = widget.style.display !== 'none' && widget.style.display !== '';
+    widget.style.display = visible ? 'none' : 'block';
+    if (btn) btn.classList.toggle('active', !visible);
+}
+
 function toggleTimerMinimize() {
     var widget = document.getElementById('timer-widget');
     var btn    = document.getElementById('timer-minimize-btn');
@@ -3379,6 +4280,599 @@ function itvClearRecMarks() {
     });
 }
 
+// ===== 読み上げ速度（カード単体・連続朗読で共通／永続化） =====
+var rdRate = parseFloat(localStorage.getItem('rd_rate')) || 1.0;
+function rdSaveRate(v) {
+    rdRate = v;
+    localStorage.setItem('rd_rate', String(v));
+}
+
+// ===== MOBILE SWIPE =====
+(function() {
+    var isMobile = function() { return window.innerWidth <= 640; };
+    var mIdx = 0;
+    var mData = [];
+    var mCard    = document.getElementById('mobile-card');
+    var mTitle   = document.getElementById('mobile-card-title');
+    var mContent = document.getElementById('mobile-card-content');
+    var mCounter = document.getElementById('mobile-counter');
+    var mWrap    = document.getElementById('mobile-swipe-wrap');
+    var mobSpeaking = false;
+
+    function mSync() {
+        if (!isMobile()) return;
+        var active = getActive();
+        var allData = active ? active.data : [];
+        var isEditMode = (typeof appMode !== 'undefined' && appMode === 'edit');
+        // 編集モードでは空カードも含めて全件を対象にする（新規入力・編集のため）
+        mData = isEditMode ? allData.slice() : allData.filter(function(d) {
+            return (d.title && d.title.trim()) || (d.content && d.content.trim());
+        });
+        if (mIdx >= mData.length) mIdx = Math.max(0, mData.length - 1);
+
+        // グリッドモード時はスワイプUIを非表示
+        if (document.body.classList.contains('mob-grid')) {
+            mWrap.style.display = 'none';
+            return;
+        }
+        mRender();
+        mWrap.style.display = mData.length ? 'flex' : 'none';
+        mWrap.style.flexDirection = 'column';
+    }
+
+    // 外部からインデックス指定でスワイプUIを開く
+    window.mSetIdx = function(idx) {
+        mIdx = idx;
+        mSync();
+    };
+    window.mSync = mSync;
+
+    function mRender() {
+        var d = mData[mIdx] || { title: '', content: '' };
+        mTitle.textContent   = d.title   || '';
+        mContent.textContent = d.content || '';
+        mCounter.textContent = (mData.length ? mIdx + 1 : 0) + ' / ' + mData.length;
+        // 朗読モード中は単体読み上げを止めない（連続朗読を妨げないため）
+        if (typeof appMode === 'undefined' || appMode !== 'reading') {
+            mobSpeakStop();
+        }
+
+        // 編集モード：タイトル・本文を編集可能にし、grid-item側と同期
+        var isEdit = (typeof appMode !== 'undefined' && appMode === 'edit');
+        mTitle.contentEditable   = isEdit ? 'true' : 'false';
+        mContent.contentEditable = isEdit ? 'true' : 'false';
+        mTitle.classList.toggle('mob-editable', isEdit);
+        mContent.classList.toggle('mob-editable', isEdit);
+
+        // 朗読モード：文節分割レンダリング
+        var sentEl = document.getElementById('mobile-card-sentences');
+        if (sentEl) {
+            sentEl.innerHTML = '';
+            var fullText = (d.title ? d.title + '。' : '') + (d.content || '');
+            // 句読点・改行・感嘆符で分割
+            var parts = fullText.split(/([。、！？\n]+)/);
+            var sentences = [];
+            for (var i = 0; i < parts.length; i += 2) {
+                var txt = parts[i] + (parts[i+1] || '');
+                if (txt.trim()) sentences.push(txt);
+            }
+            if (!sentences.length && fullText.trim()) sentences = [fullText];
+            sentences.forEach(function(s, si) {
+                var span = document.createElement('span');
+                span.className = 'mob-sentence';
+                span.textContent = s;
+                span.dataset.idx = si;
+                span.addEventListener('click', function() {
+                    // タップした文節から「再生ボタンを押したのと同じ状態」で朗読開始
+                    var fromIdx = parseInt(this.dataset.idx, 10);
+                    if (window._mobCurrentEl) {
+                        window.rdStartFrom(window._mobCurrentEl, fromIdx);
+                    }
+                });
+                sentEl.appendChild(span);
+            });
+            // 現在再生中の文節ハイライトを保持
+            window._mobSentences = sentences;
+        }
+
+        // 現在表示中のgrid-itemを記憶（編集モードでは全カード、それ以外は非空カードのみ）
+        var isEditModeNow = (typeof appMode !== 'undefined' && appMode === 'edit');
+        var cards = isEditModeNow
+            ? Array.from(grid.querySelectorAll('.grid-item'))
+            : Array.from(grid.querySelectorAll('.grid-item')).filter(function(el) {
+                var t = el.querySelector('.title-input');
+                var c = el.querySelector('.content-textarea');
+                return (t && t.value.trim()) || (c && c.value.trim());
+            });
+        window._mobCurrentEl = cards[mIdx] || null;
+        // 注意：ここではspeechSynthesis.cancel()を呼ばない。
+        // カードの閲覧・スワイプは連続朗読の進行を妨げない設計とする。
+
+        // 文節spanを再生成した直後、表示カードと朗読中カードの一致状況に応じてハイライトを再評価
+        if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+    }
+
+    // 文節ハイライトはrdHighlightSentence（グローバル）が担当
+
+    function mAnimate(dir, cb) {
+        mCard.classList.add(dir === 1 ? 'slide-left' : 'slide-right');
+        setTimeout(function() {
+            cb();
+            mCard.classList.remove('slide-left', 'slide-right');
+            mCard.style.transition = 'none';
+            void mCard.offsetWidth;
+            mCard.style.transition = '';
+            mRender();
+        }, 180);
+    }
+
+    function mNext() { if (mIdx >= mData.length - 1) return; mAnimate(1, function() { mIdx++; }); }
+    function mPrev() { if (mIdx <= 0) return; mAnimate(-1, function() { mIdx--; }); }
+
+    document.getElementById('mob-next').addEventListener('click', mNext);
+    document.getElementById('mob-prev').addEventListener('click', mPrev);
+
+    // 編集モード：mTitle/mContentへの入力をgrid-item実体へ反映
+    function mSyncToGridItem(field, value) {
+        var el = window._mobCurrentEl;
+        if (!el) return;
+        var input = field === 'title'
+            ? el.querySelector('.title-input')
+            : el.querySelector('.content-textarea');
+        if (!input) return;
+        input.value = value;
+        // grid-item側のinputイベントを発火させ、既存の保存・自動保存ロジックに乗せる
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        // mDataも更新（カウンタ・前後カードの表示に必要）
+        if (mData[mIdx]) mData[mIdx][field] = value;
+    }
+
+    mTitle.addEventListener('input', function() {
+        if (mTitle.contentEditable !== 'true') return;
+        mSyncToGridItem('title', mTitle.textContent);
+    });
+    mContent.addEventListener('input', function() {
+        if (mContent.contentEditable !== 'true') return;
+        mSyncToGridItem('content', mContent.textContent);
+    });
+    // Enterキーで改行のみ許可（タイトルは1行想定だが本文は複数行OKなのでデフォルト動作のまま）
+    mTitle.addEventListener('keydown', function(e) {
+        if (mTitle.contentEditable === 'true' && e.key === 'Enter') {
+            e.preventDefault();
+            mContent.focus();
+        }
+    });
+
+    // スワイプ
+    var touchStartX = 0, touchStartY = 0;
+    mWrap.addEventListener('touchstart', function(e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    mWrap.addEventListener('touchend', function(e) {
+        var dx = e.changedTouches[0].clientX - touchStartX;
+        var dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+            if (dx < 0) mNext(); else mPrev();
+        }
+    }, { passive: true });
+
+    // モバイル音声
+    function mobSpeakStop() {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        mobSpeaking = false;
+        var btn = document.getElementById('mob-speech-btn');
+        if (btn) { btn.textContent = '▶ 読み上げ'; btn.classList.remove('speaking'); }
+    }
+
+    window.mobSpeechToggle = function() {
+        if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+        if (mobSpeaking) { mobSpeakStop(); return; }
+        var d = mData[mIdx];
+        if (!d) return;
+        var text = (d.title ? d.title + '。' : '') + (d.content || '');
+        if (!text.trim()) return;
+        var utt = new SpeechSynthesisUtterance(text);
+        utt.lang  = 'ja-JP';
+        utt.rate  = rdRate;
+        utt.onstart = function() {
+            mobSpeaking = true;
+            var btn = document.getElementById('mob-speech-btn');
+            if (btn) { btn.textContent = '⏹ 停止'; btn.classList.add('speaking'); }
+        };
+        utt.onend = utt.onerror = function() { mobSpeakStop(); };
+        window.speechSynthesis.speak(utt);
+    };
+
+    window.mobSpeechRateChange = function(v) { rdSaveRate(parseFloat(v)); rdSyncRateUI(); };
+
+    // PCとモバイルの表示切替
+    function mRefresh() {
+        if (isMobile()) { mSync(); } else { mWrap.style.display = 'none'; mobSpeakStop(); }
+    }
+
+    var gridEl = document.getElementById('grid');
+    var mo = new MutationObserver(function() { if (isMobile()) mSync(); });
+    mo.observe(gridEl, { childList: true });
+
+    window.addEventListener('resize', mRefresh);
+    document.addEventListener('scenarioChanged', mRefresh);
+    window.addEventListener('load', function() { setTimeout(mRefresh, 300); });
+})();
+
+// ===== READING MODE =====
+var rdItems    = [];
+var rdIdx      = 0;
+var rdRunning  = false;
+var rdPaused   = false;
+var rdReadTitle = (localStorage.getItem('rd_read_title') !== '0'); // デフォルトtrue
+var rdSentences  = [];  // 現在カードの文節配列
+var rdSentIdx    = 0;   // 現在カード内での文節インデックス（一時停止再開用）
+
+function rdGetCards() {
+    return Array.from(grid.querySelectorAll('.grid-item')).filter(function(el) {
+        var t = el.querySelector('.title-input');
+        var c = el.querySelector('.content-textarea');
+        return (t && t.value.trim()) || (c && c.value.trim());
+    });
+}
+
+// テキストを文節（句読点・改行区切り）に分割
+function rdSplitSentences(text) {
+    var parts = text.split(/([。、！？\n]+)/);
+    var sentences = [];
+    for (var i = 0; i < parts.length; i += 2) {
+        var txt = parts[i] + (parts[i+1] || '');
+        if (txt.trim()) sentences.push(txt);
+    }
+    if (!sentences.length && text.trim()) sentences = [text];
+    return sentences;
+}
+
+window.rdTitleToggleChange = function(checked) {
+    rdReadTitle = checked;
+    localStorage.setItem('rd_read_title', checked ? '1' : '0');
+};
+
+function rdUpdateUI() {
+    var playBtn  = document.getElementById('rd-play-btn');
+    var pauseBtn = document.getElementById('rd-pause-btn');
+    var stopBtn  = document.getElementById('rd-stop-btn');
+    var info     = document.getElementById('rd-info');
+    var hint     = document.getElementById('rd-hint');
+    if (!playBtn) return;
+    var isMob = window.innerWidth <= 640;
+    if (rdRunning && !rdPaused) {
+        // 再生中
+        var d = rdItems[rdIdx];
+        playBtn.textContent  = '▶ 再生';
+        playBtn.disabled     = true;
+        pauseBtn.disabled    = false;
+        stopBtn.disabled     = false;
+        playBtn.classList.add('active');
+        info.textContent = (rdIdx + 1) + ' / ' + rdItems.length + (d ? '　' + (d.title || '').slice(0, 16) : '');
+        if (hint) hint.style.display = 'none';
+    } else if (rdRunning && rdPaused) {
+        // 一時停止中
+        var d2 = rdItems[rdIdx];
+        playBtn.textContent  = '▶ 再開';
+        playBtn.disabled     = false;
+        pauseBtn.disabled    = true;
+        stopBtn.disabled     = false;
+        playBtn.classList.remove('active');
+        info.textContent = '一時停止中　' + (rdIdx + 1) + ' / ' + rdItems.length + (d2 ? '　' + (d2.title || '').slice(0, 14) : '');
+        if (hint) hint.style.display = 'none';
+    } else {
+        // 未開始・停止済み
+        playBtn.textContent  = '▶ 再生';
+        playBtn.disabled     = false;
+        pauseBtn.disabled    = true;
+        stopBtn.disabled     = true;
+        playBtn.classList.remove('active');
+        info.textContent = isMob ? '表示中のカードから再生' : (rdItems.length ? rdItems.length + ' 枚' : 'カードをクリックして開始');
+        if (hint) hint.style.display = isMob ? 'none' : '';
+    }
+}
+
+function rdHighlight(idx) {
+    grid.querySelectorAll('.grid-item.reading-active').forEach(function(el){ el.classList.remove('reading-active'); });
+    if (rdItems[idx]) {
+        rdItems[idx].el.classList.add('reading-active');
+        rdItems[idx].el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    // スマホのスワイプ表示を朗読中のカードに自動追従させる
+    if (window.innerWidth <= 640 && typeof window.mSetIdx === 'function') {
+        if (window._mobIdx !== idx) {
+            window._mobIdx = idx;
+            window.mSetIdx(idx);
+        }
+    } else if (rdItems[idx]) {
+        // PC：停止後に再生した時、進行中だったカードへ戻れるよう記憶を更新
+        window._mobCurrentEl = rdItems[idx].el;
+    }
+    // [NEW] PC：オーバーレイが開いている場合、朗読中のカードに合わせて表示内容も自動切替する
+    if (window.innerWidth > 640 && rdItems[idx] && overlay && overlay.style.display !== 'none') {
+        var newItem = rdItems[idx].el;
+        if (editCardItem !== newItem) {
+            var t = newItem.querySelector('.title-input');
+            var c = newItem.querySelector('.content-textarea');
+            isLocked = true;
+            showOverlay(t ? t.value : '', c ? c.value : '', newItem);
+        }
+    }
+}
+
+// モバイル文節UIのハイライトをrdSentIdxに同期
+// 重要：現在「表示されているカード」が「朗読中のカード」と一致する場合のみハイライトする
+function rdHighlightMobSentence() {
+    var sentEl = document.getElementById('mobile-card-sentences');
+    if (sentEl) {
+        var isMatchingCard = rdItems[rdIdx] && window._mobCurrentEl === rdItems[rdIdx].el;
+        sentEl.querySelectorAll('.mob-sentence').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+        if (isMatchingCard) {
+            var target = sentEl.querySelector('.mob-sentence[data-idx="' + rdSentIdx + '"]');
+            if (target) target.classList.add('mob-sentence-active');
+        }
+    }
+    // [NEW] PC：オーバーレイが開いている場合、その中の文節（.speech-sentence）もハイライト
+    if (overlay && overlay.style.display !== 'none' && editCardItem && rdItems[rdIdx] && editCardItem === rdItems[rdIdx].el) {
+        var ovSentences = overlayText.querySelectorAll('.speech-sentence');
+        ovSentences.forEach(function(s){ s.classList.remove('speech-active'); });
+        var d = rdItems[rdIdx];
+        var titleOffset = (rdReadTitle && d && d.title) ? 1 : 0;
+        var ovIdx = rdSentIdx - titleOffset;
+        if (ovIdx >= 0 && ovSentences[ovIdx]) {
+            ovSentences[ovIdx].classList.add('speech-active');
+            ovSentences[ovIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+}
+
+// カード内の指定文節インデックスから読み上げ（文単位で一時停止再開を実現）
+function rdSpeakFromSentence(startSentIdx) {
+    if (!rdRunning || rdPaused) return;
+    var d = rdItems[rdIdx];
+    if (!d) { rdStop(); showToast('✅ 朗読が完了しました'); return; }
+
+    rdHighlight(rdIdx);
+    rdUpdateUI();
+
+    // カードが変わった場合は文節を再分割
+    var fullText = (rdReadTitle && d.title ? d.title + '。' : '') + (d.content || '');
+    if (rdSentences.length === 0 || rdSentIdx === 0) {
+        rdSentences = rdSplitSentences(fullText);
+    }
+    if (startSentIdx !== undefined) rdSentIdx = startSentIdx;
+
+    var remaining = rdSentences.slice(rdSentIdx).join('');
+    if (!remaining.trim()) {
+        // このカードは読み終わり：次のカードへ
+        rdIdx++;
+        rdSentences = [];
+        rdSentIdx = 0;
+        rdSpeakFromSentence(0);
+        return;
+    }
+
+    // このutterance開始時点でのrdSentIdxを固定（onboundary内で参照がズレないように）
+    var baseSentIdx = rdSentIdx;
+    var firstBoundaryFired = false;
+
+    // 読み上げ開始時点で即座に確定・ハイライト（onboundaryの発火を待たない）
+    rdSentIdx = baseSentIdx;
+    if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+
+    var utt = new SpeechSynthesisUtterance(remaining);
+    utt.lang  = 'ja-JP';
+    utt.rate  = rdRate;
+
+    // boundary イベントで「今読んでいる文節」を追跡（対応ブラウザのみ）
+    utt.onboundary = function(e) {
+        if (e.charIndex === undefined) return;
+        // 最初のboundaryイベントは文節の先頭（charIndex≒0）を指すはずなので、
+        // タップ/クリックで指定した開始文節(baseSentIdx)を上書きしない
+        if (!firstBoundaryFired) {
+            firstBoundaryFired = true;
+            if (e.charIndex < (rdSentences[baseSentIdx] || '').length) {
+                rdSentIdx = baseSentIdx;
+                if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+                return;
+            }
+        }
+        // remaining内の絶対文字位置から、rdSentences内のインデックスを毎回baseSentIdxから再計算する
+        var charCount = 0;
+        for (var i = baseSentIdx; i < rdSentences.length; i++) {
+            charCount += rdSentences[i].length;
+            if (e.charIndex < charCount) {
+                rdSentIdx = i;
+                break;
+            }
+        }
+        if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+    };
+
+    utt.onend = function() {
+        if (!rdRunning || rdPaused) return;
+        rdIdx++;
+        rdSentences = [];
+        rdSentIdx = 0;
+        rdSpeakFromSentence(0);
+    };
+    utt.onerror = function(e) {
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        if (rdRunning) rdStop();
+    };
+    window.speechSynthesis.speak(utt);
+}
+
+// 後方互換のためのエイリアス
+function rdSpeakCurrent() {
+    rdSpeakFromSentence(rdSentIdx || 0);
+}
+
+function rdBuildItems(fromEl) {
+    var cards = rdGetCards();
+    rdItems = cards.map(function(el) {
+        return {
+            el:      el,
+            title:   el.querySelector('.title-input').value,
+            content: el.querySelector('.content-textarea').value
+        };
+    });
+    rdIdx = 0;
+    if (fromEl) {
+        var fi = rdItems.findIndex(function(c){ return c.el === fromEl; });
+        if (fi >= 0) rdIdx = fi;
+    }
+    rdSentences = [];
+    rdSentIdx = 0;
+}
+
+window.rdStartFrom = function(fromEl, fromSentIdx) {
+    if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+    window.speechSynthesis.cancel();
+    rdBuildItems(fromEl);
+    if (!rdItems.length) { showToast('再生できるカードがありません'); return; }
+    // 最後に開始したカードを記憶（PC・スマホ共通）：停止後の再生時に同じカードへ戻る
+    if (rdItems[rdIdx]) window._mobCurrentEl = rdItems[rdIdx].el;
+    rdRunning = true;
+    rdPaused  = false;
+    rdUpdateUI();
+    var startIdx = fromSentIdx || 0;
+    setTimeout(function(){ rdSpeakFromSentence(startIdx); }, 80);
+};
+
+// rdPlay: 一時停止中は「止めた文の頭」から再開（先頭カードに戻らない）
+window.rdPlay = function() {
+    if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+    if (rdPaused && rdItems.length) {
+        // 一時停止からの再開：止めた文節（rdSentIdx）から継続
+        rdPaused  = false;
+        rdRunning = true;
+        window.speechSynthesis.cancel();
+        rdUpdateUI();
+        setTimeout(function(){ rdSpeakFromSentence(rdSentIdx); }, 80);
+    } else if (!rdRunning) {
+        // 未開始：現在表示カードから開始（スマホはmIdx、PCは先頭）
+        var startEl = null;
+        if (window._mobCurrentEl) {
+            startEl = window._mobCurrentEl;
+        }
+        window.rdStartFrom(startEl);
+    }
+};
+
+window.rdPause = function() {
+    if (!rdRunning || rdPaused) return;
+    rdPaused = true;
+    window.speechSynthesis.cancel();
+    // rdSentIdxはonboundaryで更新済みの値を保持。今読んでいた文の頭から再開できる。
+    rdUpdateUI();
+};
+
+window.rdStop = function() {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    rdRunning   = false;
+    rdPaused    = false;
+    rdIdx       = 0;
+    rdSentences = [];
+    rdSentIdx   = 0;
+    // 注意：window._mobCurrentElはクリアしない。
+    // 停止後に再生を押した時、表示中のカードの頭から再開できるようにするため。
+    window._mobIdx = undefined;
+    grid.querySelectorAll('.grid-item.reading-active').forEach(function(el){ el.classList.remove('reading-active'); });
+    document.querySelectorAll('.mob-sentence.mob-sentence-active').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+    // [NEW] PCオーバーレイの文節ハイライトもクリア
+    document.querySelectorAll('.speech-sentence.speech-active').forEach(function(s){ s.classList.remove('speech-active'); });
+    rdUpdateUI();
+};
+
+window.rdRateChange = function(v) { rdSaveRate(parseFloat(v)); rdSyncRateUI(); };
+
+window.rdSetRate = function(btn) {
+    rdSaveRate(parseFloat(btn.dataset.rate));
+    rdSyncRateUI();
+    var pop = document.getElementById('rd-rate-popover');
+    if (pop) pop.classList.remove('open');
+    // 朗読中なら現カードを再生し直し（速度即反映）
+    if (rdRunning && !rdPaused) {
+        window.speechSynthesis.cancel();
+        setTimeout(function(){ rdSpeakCurrent(); }, 80);
+    }
+};
+
+// 速度ポップオーバーの開閉
+window.rdToggleRatePopover = function(e) {
+    e.stopPropagation();
+    var pop = document.getElementById('rd-rate-popover');
+    var trigger = document.getElementById('rd-rate-trigger');
+    var willOpen = !pop.classList.contains('open');
+    pop.classList.toggle('open', willOpen);
+    if (willOpen && trigger) {
+        // 画面内に収まるようfixed位置を計算（はみ出し防止）
+        var tr = trigger.getBoundingClientRect();
+        pop.style.position = 'fixed';
+        var popWidth = 168;
+        var left = tr.right - popWidth;
+        if (left < 8) left = 8;
+        if (left + popWidth > window.innerWidth - 8) left = window.innerWidth - popWidth - 8;
+        pop.style.left   = left + 'px';
+        pop.style.right  = 'auto';
+        pop.style.bottom = (window.innerHeight - tr.top + 6) + 'px';
+    }
+};
+document.addEventListener('click', function(e) {
+    var pop = document.getElementById('rd-rate-popover');
+    var trigger = document.getElementById('rd-rate-trigger');
+    if (!pop || !pop.classList.contains('open')) return;
+    if (e.target === trigger || trigger.contains(e.target)) return;
+    if (!pop.contains(e.target)) pop.classList.remove('open');
+});
+window.addEventListener('resize', function() {
+    var pop = document.getElementById('rd-rate-popover');
+    if (pop) pop.classList.remove('open');
+});
+
+// 速度UIを全箇所（READING BAR・モバイル単体読み上げ）で同期
+function rdSyncRateUI() {
+    document.querySelectorAll('.rd-rate-btn').forEach(function(b){
+        b.classList.toggle('selected', parseFloat(b.dataset.rate) === rdRate);
+    });
+    var mobSel = document.getElementById('mob-speech-rate');
+    if (mobSel) mobSel.value = String(rdRate);
+    var trigger = document.getElementById('rd-rate-current');
+    if (trigger) trigger.textContent = rdRate.toFixed(1) + 'x';
+}
+
+// 初期状態の復元
+window.addEventListener('load', function() {
+    rdSyncRateUI();
+    var titleCheckbox = document.getElementById('rd-title-toggle');
+    if (titleCheckbox) titleCheckbox.checked = rdReadTitle;
+});
+
+// 朗読モード中にカードをクリック → そこから開始
+grid.addEventListener('click', function(e) {
+    if (appMode !== 'reading') return;
+    var item = e.target.closest('.grid-item');
+    if (!item) return;
+    var t = item.querySelector('.title-input');
+    var c = item.querySelector('.content-textarea');
+    if ((!t || !t.value.trim()) && (!c || !c.value.trim())) return;
+    window.rdStartFrom(item);
+});
+
+// グリッド更新時にUIを再評価
+(function() {
+    var mo = new MutationObserver(function() {
+        if (appMode === 'reading' && !rdRunning) {
+            rdBuildItems(null);
+            rdUpdateUI();
+        }
+    });
+    mo.observe(grid, { childList: true });
+})();
+
 // 録音削除
 window.itvDeleteRec = function(id, cardId, e) {
     e.stopPropagation();
@@ -3393,6 +4887,168 @@ window.itvDeleteRec = function(id, cardId, e) {
 // [WHISPER拡張ポイント]
 // itvStopRecording() の blob 取得後に以下を呼び出す形で拡張可能:
 // async function itvTranscribeWithWhisper(blob) {
+
+// ===== MOBILE VIEW MODE =====
+var mobView = localStorage.getItem('mob_view') || 'swipe';
+
+function mobSyncTitleLabels() {
+    grid.querySelectorAll('.grid-item').forEach(function(item, i) {
+        var input = item.querySelector('.title-input');
+        if (!input) return;
+        var label = item.querySelector('.mob-title-label');
+        if (!label) {
+            label = document.createElement('div');
+            label.className = 'mob-title-label';
+            item.appendChild(label);
+        }
+        // 番号span
+        var numSpan = label.querySelector('.mob-num-label');
+        if (!numSpan) {
+            numSpan = document.createElement('span');
+            numSpan.className = 'mob-num-label';
+            label.appendChild(numSpan);
+        }
+        numSpan.textContent = '#' + (i + 1);
+        // タイトルspan
+        var txtSpan = label.querySelector('.mob-title-text');
+        if (!txtSpan) {
+            txtSpan = document.createElement('span');
+            txtSpan.className = 'mob-title-text';
+            label.appendChild(txtSpan);
+        }
+        txtSpan.textContent = input.value || '';
+        if (!input._mobLabelBound) {
+            input._mobLabelBound = true;
+            input.addEventListener('input', function() {
+                txtSpan.textContent = input.value;
+            });
+        }
+    });
+}
+
+function mobSetView(v) {
+    mobView = v;
+    localStorage.setItem('mob_view', v);
+    document.body.classList.remove('mob-grid', 'mob-grid1', 'mob-grid2');
+    document.querySelectorAll('.mob-view-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.view === v);
+    });
+    if (v === 'grid1') {
+        document.body.classList.add('mob-grid', 'mob-grid1');
+        mobSyncTitleLabels();
+    } else if (v === 'grid2') {
+        document.body.classList.add('mob-grid', 'mob-grid2');
+        mobSyncTitleLabels();
+    }
+    if (typeof mSync === 'function') mSync();
+}
+
+// グリッドモードでカードをタップ → スワイプUIに切替してそのカードを表示
+grid.addEventListener('click', function(e) {
+    if (!document.body.classList.contains('mob-grid')) return;
+    if (appMode !== 'view' && appMode !== 'reading') return;
+    var item = e.target.closest('.grid-item');
+    if (!item) return;
+    var items = Array.from(grid.querySelectorAll('.grid-item')).filter(function(el){
+        var t = el.querySelector('.title-input');
+        var c = el.querySelector('.content-textarea');
+        return (t && t.value.trim()) || (c && c.value.trim());
+    });
+    var idx = items.indexOf(item);
+    if (idx < 0) return;
+    mobSetView('swipe');
+    setTimeout(function() {
+        if (typeof mSetIdx === 'function') mSetIdx(idx);
+    }, 50);
+}, true);
+
+window.addEventListener('load', function() {
+    // 初期状態を復元
+    var btn = document.querySelector('.mob-view-btn[data-view="' + mobView + '"]');
+    if (btn) mobSetView(mobView);
+});
+
+window.mSetIdx = null; // mSync後に外部から設定
+function mobDrawerOpen() {
+    // ドロワー内の値をPC側と同期
+    var r = document.getElementById('rowsInput');
+    var c = document.getElementById('colsInput');
+    var f = document.getElementById('fontSizeSlider');
+    if (r) document.getElementById('rowsInputMob').value = r.value;
+    if (c) document.getElementById('colsInputMob').value = c.value;
+    if (f) {
+        document.getElementById('fontSizeSliderMob').value = f.value;
+        document.getElementById('fontSizeValMob').textContent = f.value + 'px';
+    }
+    // テーマアイコン同期
+    var icon = document.getElementById('themeIcon');
+    if (icon) document.getElementById('mobThemeIcon').textContent = icon.textContent;
+
+    document.getElementById('mob-drawer').classList.add('open');
+    document.getElementById('mob-drawer-overlay').classList.add('open');
+}
+
+function mobDrawerClose() {
+    document.getElementById('mob-drawer').classList.remove('open');
+    document.getElementById('mob-drawer-overlay').classList.remove('open');
+}
+
+// ドロワー内スライダー → PC側に反映
+(function() {
+    window.addEventListener('load', function() {
+        var fsMob = document.getElementById('fontSizeSliderMob');
+        if (fsMob) {
+            fsMob.addEventListener('input', function() {
+                document.getElementById('fontSizeValMob').textContent = this.value + 'px';
+                var fs = document.getElementById('fontSizeSlider');
+                if (fs) { fs.value = this.value; fs.dispatchEvent(new Event('input')); }
+            });
+        }
+        var rMob = document.getElementById('rowsInputMob');
+        if (rMob) {
+            rMob.addEventListener('change', function() {
+                var r = document.getElementById('rowsInput');
+                if (r) { r.value = this.value; r.dispatchEvent(new Event('change')); }
+            });
+        }
+        var cMob = document.getElementById('colsInputMob');
+        if (cMob) {
+            cMob.addEventListener('change', function() {
+                var c = document.getElementById('colsInput');
+                if (c) { c.value = this.value; c.dispatchEvent(new Event('change')); }
+            });
+        }
+    });
+})();
+
+// ===== MOBILE SCENARIO SELECT =====
+function mobRenderScenarioSelect() {
+    var sel = document.getElementById('mob-scenario-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    scenarios.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        if (s.id === activeScenarioId) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function mobScenarioChange(id) {
+    switchScenario(id);
+}
+
+// renderScenarioTabs にモバイルセレクトも同期させる
+var _origRenderScenarioTabs = window.renderScenarioTabs;
+window.renderScenarioTabs = function() {
+    if (typeof _origRenderScenarioTabs === 'function') _origRenderScenarioTabs();
+    mobRenderScenarioSelect();
+};
+
+window.addEventListener('load', function() {
+    mobRenderScenarioSelect();
+});
 //   const formData = new FormData();
 //   formData.append('file', blob, 'audio.webm');
 //   formData.append('model', 'whisper-1');
