@@ -295,6 +295,8 @@
         }
         .scenario-tab.active { border-color: var(--accent); background: rgba(61,139,255,0.1); }
         .scenario-tab:hover:not(.active) { border-color: var(--border2); background: var(--surface3); }
+        .scenario-tab.dragging { opacity: 0.4; border-style: dashed; }
+        .scenario-tab.drag-over { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(108,99,255,0.25); }
         .scenario-tab .tab-key {
             font-family: 'DM Mono', monospace;
             font-size: 0.56rem; background: var(--border); border-radius: 3px;
@@ -342,6 +344,15 @@
             height: 160px;
         }
         .content-textarea { overflow-y: auto !important; }
+        .content-textarea::-webkit-scrollbar { width: 3px; }
+        .content-textarea::-webkit-scrollbar-track { background: transparent; }
+        .content-textarea::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+        .content-textarea::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+        /* グリッドラッパー全体の控えめスクロールバー */
+        .grid-wrapper::-webkit-scrollbar { width: 3px; }
+        .grid-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .grid-wrapper::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+        .grid-wrapper::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
         .grid-item:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.3); transform: translateY(-1px); }
         .grid-item.shortcut-active { border-color: var(--success); box-shadow: 0 0 0 2px rgba(45,212,164,0.25); }
         .grid-item.dragging { opacity: 0.35; transform: scale(0.95); border-style: dashed; }
@@ -366,6 +377,9 @@
         }
         .drag-handle:hover { color: var(--accent); }
 
+        /* モバイル用タイトルラベル：PC では常に非表示 */
+        .mob-title-label { display: none !important; }
+
         .item-meta { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
         .item-num { font-family: 'DM Mono', monospace; font-size: 0.56rem; color: var(--text-dim); }
         .shortcut-badge {
@@ -377,7 +391,7 @@
         .search-highlight { background: rgba(245,166,35,0.35); border-radius: 2px; }
 
         .title-input {
-            width: calc(100% - 22px); border: none; outline: none;
+            width: 100%; border: none; outline: none;
             font-size: 0.78rem; font-weight: 700; color: #7eb8ff;
             background: transparent; margin-bottom: 4px; padding-bottom: 3px;
             border-bottom: 1px solid var(--border);
@@ -390,6 +404,27 @@
             line-height: 1.55; font-family: 'Noto Sans JP', sans-serif;
         }
         .content-textarea::placeholder { color: var(--text-dim); }
+
+        .field-row { position: relative; }
+        .field-clear-btn {
+            position: absolute; top: -1px; right: 0;
+            width: 15px; height: 15px;
+            border: none; background: var(--surface2);
+            color: var(--text-dim); border-radius: 3px;
+            font-size: 0.62rem; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5; opacity: 0;
+            transition: all 0.15s;
+        }
+        .grid-item:hover .field-clear-btn { opacity: 1; }
+        .field-clear-btn:hover { background: rgba(242,82,106,0.18); color: var(--danger); border-color: var(--danger); }
+        .field-row.title-row { padding-right: 18px; }
+        .field-row.title-row .field-clear-btn { top: -2px; }
+        .field-row.content-row { flex: 1; padding-right: 18px; display: flex; }
+        .field-row.content-row .field-clear-btn { top: 2px; }
+        body.view-mode .field-clear-btn { display: none; }
+        /* [NEW] 朗読モード中も×ボタンを非表示 */
+        body.reading-mode .field-clear-btn { display: none; }
 
         /* ─── OVERLAY ─── */
         #overlay-backdrop {
@@ -429,6 +464,9 @@
             white-space: pre-wrap; word-wrap: break-word; padding-bottom: 64px;
             font-family: 'Noto Sans JP', sans-serif;
         }
+        .speech-sentence { cursor: pointer; border-radius: 3px; transition: background 0.15s; }
+        .speech-sentence:hover { background: var(--accent-glow); }
+        .speech-sentence.speech-active { background: rgba(45,212,164,0.22); }
 
         #edit-mode-btn {
             position: absolute; top: 14px; right: 50px;
@@ -440,31 +478,86 @@
         #edit-mode-btn:hover { border-color: var(--accent); }
         #edit-mode-btn.active { background: rgba(61,139,255,0.15); border-color: var(--accent); }
 
+        /* ─── 本文内検索バー ─── */
+        #overlay-find-bar {
+            display: none;
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            align-items: center; gap: 6px;
+            background: var(--surface2); border: 1px solid var(--border2);
+            border-radius: 8px; padding: 5px 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            z-index: 50;
+        }
+        #overlay-find-bar.active { display: flex; }
+        #overlay-find-bar .find-icon { font-size: 0.75rem; color: var(--text-muted); }
+        #overlay-find-input {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 5px; color: var(--text);
+            font-size: 0.78rem; padding: 4px 8px; outline: none;
+            width: 160px; font-family: 'Noto Sans JP', sans-serif;
+        }
+        #overlay-find-input:focus { border-color: var(--accent); }
+        #overlay-find-count {
+            font-family: 'DM Mono', monospace; font-size: 0.68rem;
+            color: var(--text-muted); min-width: 48px; text-align: center; white-space: nowrap;
+        }
+        #overlay-find-count.no-match { color: var(--danger); }
+        .find-nav-btn, .find-close-btn {
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text-muted); border-radius: 5px;
+            width: 24px; height: 24px; font-size: 0.68rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; line-height: 1;
+        }
+        .find-nav-btn:hover, .find-close-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .find-close-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+        .overlay-find-hit { background: rgba(245,166,35,0.4); border-radius: 2px; color: inherit; }
+        .overlay-find-hit.find-current { background: var(--accent); color: #fff; }
+        textarea.find-highlight-active { box-shadow: 0 0 0 2px var(--accent) inset; }
+
         #overlay-edit {
-            display: none; width: 100%; flex: 1;
+            display: block; width: 100%; flex: 1;
             border: 1px solid var(--border); border-radius: 8px;
             background: var(--surface2); color: var(--text);
             font-size: inherit; font-weight: 500; line-height: 1.7;
             padding: 12px 14px; resize: none; outline: none;
-            box-sizing: border-box; margin-bottom: 8px; min-height: 120px;
+            box-sizing: border-box; min-height: 120px;
             font-family: 'Noto Sans JP', sans-serif;
         }
         #overlay-edit:focus { border-color: var(--accent); }
         #overlay.edit-mode #overlay-text { display: none; }
-        #overlay.edit-mode #overlay-edit { display: block; }
+        #overlay.edit-mode #overlay-edit-row { display: flex; }
         #overlay.edit-mode #speech-bar   { display: none; }
 
         #overlay-title-edit {
-            display: none; width: 100%;
+            display: block; width: 100%;
             border: 1px solid var(--border); border-radius: 6px;
             background: var(--surface2); color: var(--accent);
             font-size: 0.88rem; font-weight: 700; letter-spacing: 0.04em;
-            padding: 6px 10px; outline: none; box-sizing: border-box; margin-bottom: 8px;
+            padding: 6px 10px; outline: none; box-sizing: border-box;
             font-family: 'Noto Sans JP', sans-serif;
         }
         #overlay-title-edit:focus { border-color: var(--accent); }
-        #overlay.edit-mode #overlay-title      { display: none; }
-        #overlay.edit-mode #overlay-title-edit { display: block; }
+        #overlay.edit-mode #overlay-title           { display: none; }
+        #overlay.edit-mode #overlay-title-edit-row  { display: flex; }
+
+        .overlay-field-row {
+            display: none; position: relative; align-items: stretch;
+            gap: 6px; margin-bottom: 8px;
+        }
+        .overlay-field-row-grow { flex: 1; margin-bottom: 8px; }
+        .overlay-field-row #overlay-title-edit,
+        .overlay-field-row #overlay-edit { margin-bottom: 0; }
+        .overlay-field-clear {
+            flex-shrink: 0; border: 1px solid var(--border);
+            background: var(--surface2); color: var(--text-dim);
+            border-radius: 6px; width: 30px; cursor: pointer;
+            font-size: 0.9rem; line-height: 1; transition: all 0.15s;
+            align-self: flex-start;
+        }
+        #overlay-edit-row .overlay-field-clear { align-self: stretch; height: auto; }
+        .overlay-field-clear:hover { background: rgba(242,82,106,0.15); border-color: var(--danger); color: var(--danger); }
 
         #close-btn {
             position: absolute; top: 12px; right: 16px;
@@ -503,6 +596,12 @@
         .speech-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
         .speech-btn:disabled { opacity: 0.3; cursor: default; }
         .speech-btn#speech-play-btn.speaking { border-color: var(--success); color: var(--success); }
+        #speech-clicklock-btn.locked { border-color: var(--warning); color: var(--warning); background: rgba(245,166,35,0.12); }
+        #speech-clicklock-btn.unlocked { border-color: var(--success); color: var(--success); background: rgba(45,212,164,0.12); }
+
+        /* クリック朗読OFF時：本文クリックでは何も起きないことを示す */
+        body.speech-click-locked .speech-sentence { cursor: text; }
+        body.speech-click-locked .speech-sentence:hover { background: transparent; }
         #speech-status { flex: 1; font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.04em; font-family: 'DM Mono', monospace; }
         #speech-rate {
             background: var(--surface2); border: 1px solid var(--border);
@@ -615,6 +714,7 @@
             background: var(--surface); border: 1px solid var(--border);
             border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             z-index: 700; overflow: hidden; user-select: none; transition: box-shadow 0.2s;
+            display: none;
         }
         #timer-widget.minimized #timer-body { display: none; }
         #timer-widget.minimized { width: auto; }
@@ -760,6 +860,111 @@
         }
         .tutorial-skip:hover { color: var(--text-muted); }
 
+        /* ─── [NEW] INTERVIEW MODE ─── */
+        .mode-btn.active.interview-mode { color: #f2526a; border-color: rgba(242,82,106,0.4); }
+        body.interview-mode .grid-item { cursor: pointer; }
+        body.interview-mode .drag-handle { display: none; }
+        body.interview-mode .title-input,
+        body.interview-mode .content-textarea { pointer-events: none; user-select: none; }
+
+        /* 録音済みドット（インタビューモード時のみ表示） */
+        body.interview-mode .grid-item.itv-has-rec::after {
+            content: '';
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: rgba(242, 82, 106, 0.55);
+            pointer-events: none;
+        }
+
+        /* 録音ステータスバー */
+        #itv-bar {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(242,82,106,0.1);
+            border: 1px solid rgba(242,82,106,0.4);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 12px;
+        }
+        #itv-bar.active { display: flex; }
+        #itv-rec-dot {
+            width: 10px; height: 10px;
+            background: #f2526a;
+            border-radius: 50%;
+            animation: itvBlink 1s step-end infinite;
+            flex-shrink: 0;
+        }
+        @keyframes itvBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        #itv-rec-label {
+            font-size: 0.72rem; color: #f2526a; font-weight: 700;
+            font-family: 'DM Mono', monospace; flex: 1;
+        }
+        #itv-elapsed {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem; color: #f2526a; font-weight: 700;
+        }
+        #itv-done-btn {
+            background: #f2526a; border: none; border-radius: 6px;
+            color: white; font-size: 0.72rem; font-weight: 700;
+            padding: 5px 12px; cursor: pointer; transition: opacity 0.15s;
+            flex-shrink: 0;
+        }
+        #itv-done-btn:hover { opacity: 0.85; }
+
+        /* 録音履歴エリア */
+        #itv-history {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+        #itv-history.has-items { display: flex; }
+        .itv-history-label {
+            font-size: 0.62rem; color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .itv-rec-item {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 7px; padding: 6px 10px;
+            cursor: pointer; transition: border-color 0.15s;
+        }
+        .itv-rec-item:hover { border-color: var(--accent); }
+        .itv-rec-item.playing { border-color: var(--success); background: rgba(45,212,164,0.08); }
+        .itv-rec-play { font-size: 0.8rem; color: var(--accent); flex-shrink: 0; }
+        .itv-rec-item.playing .itv-rec-play { color: var(--success); }
+        .itv-rec-date { font-size: 0.7rem; color: var(--text-muted); flex: 1; font-family: 'DM Mono', monospace; }
+        .itv-rec-dl {
+            background: none; border: none; color: var(--text-dim);
+            font-size: 0.75rem; cursor: pointer; padding: 2px 4px;
+            border-radius: 3px; transition: color 0.15s;
+        }
+        .itv-rec-dl:hover { color: var(--accent); }
+        .itv-rec-del {
+            background: none; border: none; color: var(--text-dim);
+            font-size: 0.75rem; cursor: pointer; padding: 2px 4px;
+            border-radius: 3px; transition: color 0.15s;
+        }
+        .itv-rec-del:hover { color: var(--danger); }
+
+        /* 録音モードバナー */
+        .interview-mode-banner {
+            display: none;
+            position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+            background: rgba(242,82,106,0.12); border: 1px solid rgba(242,82,106,0.35);
+            border-radius: 20px; padding: 6px 16px;
+            font-size: 0.68rem; color: #f2526a; font-weight: 600;
+            z-index: 600; pointer-events: none; letter-spacing: 0.04em;
+        }
+        body.interview-mode .interview-mode-banner { display: block; }
+
         /* ─── VIEW MODE BANNER ─── */
         .view-mode-banner {
             display: none;
@@ -771,6 +976,782 @@
             letter-spacing: 0.04em;
         }
         body.view-mode .view-mode-banner { display: block; }
+        /* ===== PIP CAPTURE WINDOW ===== */
+#pip-capture {
+  position: fixed;
+  bottom: 20px; left: 20px;
+  width: 320px; height: 180px;
+  border: 2px solid #3d8bff;
+  border-radius: 8px;
+  overflow: visible;
+  background: #000;
+  z-index: 800;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  display: none;
+}
+#pip-capture.minimized {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+#pip-capture.minimized #pip-cap-icon { display: flex; }
+#pip-capture.minimized #pip-cap-canvas { display: none; }
+#pip-capture.minimized .pip-resize-handle { display: none; }
+#pip-capture.minimized #pip-cap-close { display: none; }
+#pip-capture.minimized #pip-cap-reset { display: none; }
+#pip-capture.minimized #pip-cap-controls { display: none; }
+#pip-cap-icon {
+  display: none;
+  width: 100%; height: 100%;
+  align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  background: #1a2540;
+  border-radius: 50%;
+}
+#pip-cap-canvas {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  display: block;
+  cursor: grab;
+}
+#pip-cap-canvas.panning { cursor: grabbing; }
+.pip-resize-handle {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: #3d8bff;
+  border-radius: 2px;
+  z-index: 10000;
+}
+.pip-resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+.pip-resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+.pip-resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+.pip-resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+#pip-cap-controls {
+  position: absolute;
+  bottom: -36px; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0e1525;
+  border: 1px solid #1f2e4a;
+  border-radius: 0 0 8px 8px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  color: #5a7299;
+}
+#pip-cap-controls input[type=range] {
+  width: 80px;
+  accent-color: #3d8bff;
+}
+#pip-zoom-label { color: #3d8bff; font-weight: 700; min-width: 30px; }
+#pip-cap-close {
+  position: absolute;
+  top: -10px; right: -10px;
+  width: 22px; height: 22px;
+  background: #f2526a;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: white;
+  cursor: pointer; z-index: 10001;
+}
+#pip-cap-reset {
+  position: absolute;
+  top: -10px; left: -10px;
+  width: 22px; height: 22px;
+  background: #2dd4a4;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; color: white;
+  cursor: pointer; z-index: 10001;
+}
+    /* ══════════════════════════════════════
+       MOBILE UI  (≤640px)
+    ══════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+        /* --- TOP BAR: 1行固定ヘッダー --- */
+        .top-bar {
+            padding: 0 12px;
+            height: 48px;
+            gap: 0;
+            flex-wrap: nowrap;
+            overflow: hidden;
+        }
+        /* PC専用要素を全て隠す */
+        .version-badge,
+        .divider,
+        .ctrl-group,
+        .save-indicator,
+        #timerToggleBtn,
+        .top-btn { display: none !important; }
+
+        .app-logo { font-size: 0.9rem; flex: 1; }
+
+        /* モード切替：アイコンのみ */
+        .mode-toggle {
+            gap: 2px;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .mode-btn {
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+        }
+        /* テキストラベル非表示・絵文字のみ */
+        .mode-btn span { display: none; }
+
+        /* テーマトグル：アイコンのみ */
+        .theme-toggle {
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+        }
+        #themeLabel { display: none; }
+
+        /* ハンバーガーメニューボタン */
+        #mob-menu-btn {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 36px; height: 36px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-left: 6px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- ドロワー --- */
+        #mob-drawer {
+            display: block !important;
+            position: fixed;
+            top: 0; right: 0;
+            width: 280px; height: 100%;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            z-index: 5000;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            overflow-y: auto;
+            padding: 0 0 40px;
+        }
+        #mob-drawer.open { transform: translateX(0); }
+        #mob-drawer-overlay {
+            display: block !important;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 4999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        #mob-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .mob-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .mob-drawer-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+        }
+        .mob-drawer-close {
+            background: none; border: none;
+            color: var(--text-dim); font-size: 1.1rem;
+            cursor: pointer; padding: 2px 6px;
+        }
+        .mob-drawer-section {
+            padding: 14px 16px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .mob-drawer-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 10px;
+        }
+        .mob-drawer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mob-drawer-row label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            min-width: 36px;
+        }
+        .mob-drawer-row input[type="number"] {
+            width: 52px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            text-align: center;
+            padding: 5px 4px;
+            font-size: 0.8rem;
+            font-family: 'DM Mono', monospace;
+        }
+        .mob-drawer-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+        .mob-drawer-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+            min-width: 36px;
+            text-align: right;
+        }
+        .mob-drawer-btn {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            margin-bottom: 6px;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-drawer-btn:active { background: var(--surface3); }
+        .mob-drawer-btn.danger { color: var(--danger); }
+
+        /* --- SEARCH + SCENARIO: 統合1行 --- */
+        .search-bar {
+            padding: 6px 10px;
+            gap: 6px;
+        }
+        .search-bar > div[style] { display: none; } /* Ctrl+Fヒント非表示 */
+        #search-input { font-size: 0.78rem; }
+
+        .scenario-bar { display: none !important; }
+
+        /* シナリオセレクト（モバイル専用） */
+        #mob-scenario-wrap {
+            display: flex !important;
+            align-items: center;
+            gap: 6px;
+            padding: 0 10px 6px;
+            flex-shrink: 0;
+        }
+        #mob-scenario-select {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.78rem;
+            padding: 6px 10px;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        #mob-scenario-add {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mob-card-add {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mob-card-add:active { background: var(--surface3); }
+
+        /* 表示モード切替トグル */
+        #mob-view-toggle {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2px;
+        }
+        .mob-view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            border-radius: 6px;
+            width: 30px; height: 28px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-view-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* グリッド表示モード（モバイル） */
+        body.mob-grid .grid-container { display: flex !important; flex-direction: column; gap: 0; }
+        body.mob-grid .grid-wrapper { overflow-y: auto; padding: 0; }
+        body.mob-grid #mobile-swipe-wrap { display: none !important; }
+
+        /* 1列：チャプターリスト */
+        body.mob-grid1 .grid-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+            padding: 8px !important;
+            width: 100%;
+            height: auto !important;
+            box-sizing: border-box;
+        }
+        body.mob-grid1 .grid-item {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 44px !important;
+            padding: 0 12px;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center;
+            gap: 0;
+            box-shadow: none !important;
+            flex-shrink: 0;
+        }
+        body.mob-grid1 .item-meta,
+        body.mob-grid1 .title-input,
+        body.mob-grid1 .content-textarea,
+        body.mob-grid1 .drag-handle { display: none !important; }
+        body.mob-grid1 .mob-title-label {
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            gap: 0;
+            width: 100%;
+            min-width: 0;
+            padding: 11px 0;
+        }
+        body.mob-grid1 .mob-num-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            flex-shrink: 0;
+            white-space: nowrap;
+            min-width: 36px;
+            text-align: right;
+            padding-right: 12px;
+            border-right: 1px solid var(--border);
+            margin-right: 14px;
+        }
+        body.mob-grid1 .mob-title-text {
+            flex: 1;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+        /* 1列リスト表示時は×ボタン・フィールド行を非表示 */
+        body.mob-grid1 .field-clear-btn,
+        body.mob-grid1 .field-row { display: none !important; }
+        body.mob-grid1 .grid-item::after {
+            content: '›';
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-left: 6px;
+        }
+
+        /* 2列：コンパクトカード */
+        body.mob-grid2 .grid-container {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px;
+            padding: 8px;
+            width: 100%;
+            height: auto !important;
+            box-sizing: border-box;
+        }
+        body.mob-grid2 .grid-item {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 64px !important;
+            padding: 10px;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start;
+            box-shadow: none !important;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        body.mob-grid2 .item-meta {
+            display: flex !important;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 4px;
+        }
+        body.mob-grid2 .shortcut-badge { display: none !important; }
+        body.mob-grid2 .item-num {
+            font-size: 0.58rem;
+            color: var(--text-dim);
+        }
+        body.mob-grid2 .field-clear-btn,
+        body.mob-grid2 .content-textarea,
+        body.mob-grid2 .drag-handle,
+        body.mob-grid2 .title-input { display: none !important; }
+        .mob-title-label { display: none; }
+        body.mob-grid1 .mob-title-label { display: block !important; }
+        body.mob-grid2 .mob-title-label {
+            display: block !important;
+            width: 100%;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.45;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+        body.mob-grid2 .mob-num-label { display: none !important; }
+        body.mob-grid2 .mob-title-text {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.45;
+            white-space: normal;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+
+        /* --- GRID → スワイプUI --- */
+        .grid-wrapper {
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+        }
+        /* グリッドモード時は縦スクロール */
+        body.mob-grid .grid-wrapper {
+            overflow-y: auto;
+            overflow-x: hidden;
+            align-items: flex-start;
+        }
+        /* 控えめなスクロールバー */
+        body.mob-grid .grid-wrapper::-webkit-scrollbar { width: 3px; }
+        body.mob-grid .grid-wrapper::-webkit-scrollbar-track { background: transparent; }
+        body.mob-grid .grid-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 3px;
+        }
+        .grid-container { display: none !important; }
+        #mobile-swipe-wrap {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+        #mobile-card {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin: 10px 10px 6px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+        #mobile-card.slide-left  { transform: translateX(-60px); opacity: 0; }
+        #mobile-card.slide-right { transform: translateX(60px);  opacity: 0; }
+        #mobile-card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.4;
+            outline: none;
+        }
+        #mobile-card-content {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            flex: 1;
+            white-space: pre-wrap;
+            outline: none;
+        }
+        .mob-editable {
+            cursor: text;
+            border-radius: 6px;
+            padding: 4px 6px;
+            margin: -4px -6px;
+            transition: background 0.15s;
+        }
+        .mob-editable:focus {
+            background: var(--surface2);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+        #mobile-card-title.mob-editable:empty::before {
+            content: 'タイトルを入力';
+            color: var(--text-dim);
+        }
+        #mobile-card-content.mob-editable:empty::before {
+            content: '本文を入力';
+            color: var(--text-dim);
+        }
+        #mob-speech-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px 4px;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        #mob-speech-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 7px 18px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.15s;
+        }
+        #mob-speech-btn.speaking {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(61,139,255,0.1);
+        }
+        #mob-speech-rate {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 6px;
+            padding: 5px 6px;
+            font-size: 0.72rem;
+        }
+
+        /* 朗読モード：文節タップUI */
+        #reading-bar {
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px 10px;
+        }
+        #rd-rate-wrap { order: 10; }
+        #rd-rate-popover {
+            width: 168px;
+            max-width: calc(100vw - 16px);
+        }
+        .rd-rate-btn { padding: 5px 9px; font-size: 0.7rem; }
+        #rd-hint { display: none; }
+        body.reading-mode #mobile-card-content { display: none; }
+        body.reading-mode #mobile-card-sentences { display: block !important; }
+        #mobile-card-sentences {
+            font-size: 0.88rem;
+            line-height: 2.0;
+            color: var(--text-muted);
+            flex: 1;
+            overflow-y: auto;
+        }
+        .mob-sentence {
+            display: inline;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 1px 2px;
+            transition: background 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-sentence:active,
+        .mob-sentence.mob-sentence-active {
+            background: rgba(167,139,250,0.18);
+            color: var(--text);
+        }
+        #mobile-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 16px 12px;
+            flex-shrink: 0;
+        }
+        .mob-nav-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 50%;
+            width: 46px; height: 46px;
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.12s;
+        }
+        .mob-nav-btn:active { background: var(--surface3); transform: scale(0.92); }
+        #mobile-counter {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        #mobile-swipe-wrap { display: none; }
+    }
+
+    @media (min-width: 641px) {
+        #mobile-swipe-wrap  { display: none !important; }
+        #mob-scenario-wrap  { display: none !important; }
+        #mob-menu-btn       { display: none !important; }
+        #mob-drawer         { display: none !important; }
+        #mob-drawer-overlay { display: none !important; }
+    }
+
+    /* ─── READING MODE ─── */
+    .mode-btn.active.reading-mode-btn { color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+    body.reading-mode .grid-item { cursor: pointer; }
+    body.reading-mode .drag-handle { display: none; }
+    body.reading-mode .title-input,
+    body.reading-mode .content-textarea { pointer-events: none; user-select: none; }
+    body.reading-mode .grid-item.reading-active {
+        border-color: #a78bfa !important;
+        box-shadow: 0 0 0 2px rgba(167,139,250,0.2) !important;
+    }
+    /* 朗読バー */
+    #reading-bar {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        padding: 8px 14px;
+        flex-shrink: 0;
+    }
+    body.reading-mode #reading-bar { display: flex; }
+    .rd-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 6px;
+        padding: 5px 11px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+    .rd-btn:hover { border-color: var(--border2); color: var(--text); }
+    .rd-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .rd-btn.active { color: #a78bfa; border-color: #a78bfa; background: rgba(167,139,250,0.08); }
+    #rd-info {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.65rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+        flex: 1;
+    }
+    #rd-hint {
+        font-size: 0.62rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+    #rd-title-toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+        user-select: none;
+    }
+    #rd-title-toggle-label input { accent-color: #a78bfa; cursor: pointer; }
+
+    /* 控えめな速度トリガー＋ポップオーバー */
+    #rd-rate-wrap { position: relative; flex-shrink: 0; }
+    #rd-rate-trigger {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        border-radius: 6px;
+        padding: 4px 9px;
+        font-size: 0.68rem;
+        font-family: 'DM Mono', monospace;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+    }
+    #rd-rate-trigger:hover { color: var(--text); border-color: var(--border2); }
+    #rd-rate-current { color: #a78bfa; font-weight: 700; }
+    #rd-rate-popover {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        right: 0;
+        left: auto;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 5px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        gap: 3px;
+        flex-wrap: wrap;
+        width: 168px;
+        max-width: calc(100vw - 24px);
+        z-index: 200;
+    }
+    #rd-rate-popover.open { display: flex; }
+    .rd-rate-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        border-radius: 5px;
+        padding: 4px 7px;
+        font-size: 0.68rem;
+        font-family: 'DM Mono', monospace;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+    }
+    .rd-rate-btn:hover { color: var(--text); border-color: var(--border2); }
+    .rd-rate-btn.selected {
+        background: rgba(167,139,250,0.15);
+        border-color: #a78bfa;
+        color: #a78bfa;
+        font-weight: 700;
+    }
+    /* 朗読モード時はカード単体読み上げUIを非表示 */
+    body.reading-mode #mob-speech-area { display: none !important; }
     </style>
 </head>
 <body class="edit-mode-active">
@@ -785,16 +1766,18 @@
     <div class="mode-toggle">
         <button class="mode-btn edit-mode-tab active" id="editModeBtn" onclick="setAppMode('edit')">✏️ 編集</button>
         <button class="mode-btn view-mode" id="viewModeBtn" onclick="setAppMode('view')">👁 閲覧</button>
+        <button class="mode-btn reading-mode-btn" id="readingModeBtn" onclick="setAppMode('reading')">📖 朗読</button>
+        <button class="mode-btn interview-mode" id="interviewModeBtn" onclick="setAppMode('interview')">🎤 録音</button>
     </div>
 
     <div class="divider"></div>
 
     <div class="ctrl-group">
         <label>行</label>
-        <input type="number" id="rowsInput" min="1" max="20" value="4" class="num">
+        <input type="number" id="rowsInput" min="1" max="999" value="4" class="num">
         <span style="color:var(--text-dim);font-size:0.7rem;">x</span>
         <label>列</label>
-        <input type="number" id="colsInput" min="1" max="10" value="4" class="num">
+        <input type="number" id="colsInput" min="1" max="99"  value="4" class="num">
     </div>
     <div class="divider"></div>
     <div class="ctrl-group">
@@ -827,9 +1810,66 @@
     </div>
 
     <div style="flex:1"></div>
+    <div class="top-btn" id="timerToggleBtn" onclick="toggleTimerWidget()">⏱ TIMER</div>
     <div class="top-btn" onclick="showTutorial()">? ヘルプ</div>
     <div class="top-btn danger" onclick="clearAll()">全消去</div>
     <div class="top-btn" onclick="openDataModal()">データ管理</div>
+
+    <!-- モバイル用ハンバーガーボタン -->
+    <div id="mob-menu-btn" onclick="mobDrawerOpen()">☰</div>
+</div>
+
+<!-- モバイル ドロワーオーバーレイ -->
+<div id="mob-drawer-overlay" onclick="mobDrawerClose()"></div>
+
+<!-- モバイル ドロワー -->
+<div id="mob-drawer">
+    <div class="mob-drawer-header">
+        <span class="mob-drawer-title">設定</span>
+        <button class="mob-drawer-close" onclick="mobDrawerClose()">✕</button>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">グリッド</div>
+        <div class="mob-drawer-row">
+            <label>行</label>
+            <input type="number" id="rowsInputMob" min="1" max="999" value="4">
+            <span style="font-size:0.72rem;color:var(--text-dim)">×</span>
+            <label>列</label>
+            <input type="number" id="colsInputMob" min="1" max="99" value="4">
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">文字サイズ</div>
+        <div class="mob-drawer-row">
+            <input type="range" id="fontSizeSliderMob" min="10" max="100" value="30">
+            <span class="mob-drawer-val" id="fontSizeValMob">30px</span>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">テーマ</div>
+        <div class="mob-drawer-row">
+            <button class="mob-drawer-btn" onclick="toggleTheme(); mobDrawerClose()">
+                <span id="mobThemeIcon">☀️</span> テーマ切替
+            </button>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">タイマー</div>
+        <div class="mob-drawer-row">
+            <button class="mob-drawer-btn" onclick="toggleTimerWidget(); mobDrawerClose()">⏱ タイマーを表示</button>
+        </div>
+    </div>
+
+    <div class="mob-drawer-section">
+        <div class="mob-drawer-label">データ</div>
+        <button class="mob-drawer-btn" onclick="openDataModal(); mobDrawerClose()">📁 データ管理</button>
+        <button class="mob-drawer-btn" onclick="showTutorial(); mobDrawerClose()">? ヘルプ</button>
+        <button class="mob-drawer-btn danger" onclick="mobDrawerClose(); clearAll()">🗑 全消去</button>
+    </div>
 </div>
 
 <!-- SEARCH BAR -->
@@ -846,6 +1886,18 @@
     </div>
 </div>
 
+<!-- モバイル シナリオセレクト -->
+<div id="mob-scenario-wrap">
+    <select id="mob-scenario-select" onchange="mobScenarioChange(this.value)"></select>
+    <button id="mob-scenario-add" onclick="addScenario()" title="シナリオ追加">＋</button>
+    <button id="mob-card-add" onclick="addRow()" title="行追加">＋行</button>
+    <div id="mob-view-toggle">
+        <button class="mob-view-btn active" data-view="swipe"  onclick="mobSetView('swipe')"  title="スワイプ">⬜</button>
+        <button class="mob-view-btn"        data-view="grid1"  onclick="mobSetView('grid1')"  title="1列">▤</button>
+        <button class="mob-view-btn"        data-view="grid2"  onclick="mobSetView('grid2')"  title="2列">▦</button>
+    </div>
+</div>
+
 <!-- SCENARIO BAR -->
 <div class="scenario-bar">
     <span class="scenario-bar-label">シナリオ</span>
@@ -856,6 +1908,61 @@
 <!-- GRID -->
 <div class="grid-wrapper">
     <div class="grid-container" id="grid"></div>
+    <!-- MOBILE SWIPE UI -->
+    <div id="mobile-swipe-wrap">
+        <div id="mobile-card">
+            <div id="mobile-card-title"></div>
+            <div id="mobile-card-content"></div>
+            <!-- 朗読モード用：文節タップ選択 -->
+            <div id="mobile-card-sentences" style="display:none"></div>
+        </div>
+        <div id="mob-speech-area">
+            <!-- 閲覧モード時のみ表示 -->
+            <button id="mob-speech-btn" onclick="mobSpeechToggle()">▶ このカードを読む</button>
+            <select id="mob-speech-rate" onchange="mobSpeechRateChange(this.value)">
+                <option value="0.7">0.7x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.3">1.3x</option>
+                <option value="1.6">1.6x</option>
+                <option value="2.0">2.0x</option>
+            </select>
+        </div>
+        <div id="mobile-nav">
+            <div class="mob-nav-btn" id="mob-prev">‹</div>
+            <span id="mobile-counter">1 / 1</span>
+            <div class="mob-nav-btn" id="mob-next">›</div>
+        </div>
+    </div>
+</div>
+
+<!-- READING BAR -->
+<div id="reading-bar">
+    <button class="rd-btn" id="rd-play-btn"  onclick="rdPlay()">▶ 再生</button>
+    <button class="rd-btn" id="rd-pause-btn" onclick="rdPause()" disabled>⏸</button>
+    <button class="rd-btn" id="rd-stop-btn"  onclick="rdStop()"  disabled>⏹</button>
+    <span id="rd-info">カードをクリックして開始</span>
+    <label id="rd-title-toggle-label">
+        <input type="checkbox" id="rd-title-toggle" checked onchange="rdTitleToggleChange(this.checked)">
+        <span>タイトルも読む</span>
+    </label>
+    <div style="flex:1"></div>
+    <!-- 速度：控えめな折りたたみトリガー -->
+    <div id="rd-rate-wrap">
+        <button id="rd-rate-trigger" onclick="rdToggleRatePopover(event)" title="読み上げ速度">
+            <span id="rd-rate-current">1.0x</span> ⏷
+        </button>
+        <div id="rd-rate-popover">
+            <button class="rd-rate-btn" data-rate="0.7"  onclick="rdSetRate(this)">0.7x</button>
+            <button class="rd-rate-btn" data-rate="1.0"  onclick="rdSetRate(this)" data-default>1.0x</button>
+            <button class="rd-rate-btn" data-rate="1.5"  onclick="rdSetRate(this)">1.5x</button>
+            <button class="rd-rate-btn" data-rate="2.0"  onclick="rdSetRate(this)">2.0x</button>
+            <button class="rd-rate-btn" data-rate="2.5"  onclick="rdSetRate(this)">2.5x</button>
+            <button class="rd-rate-btn" data-rate="3.0"  onclick="rdSetRate(this)">3.0x</button>
+            <button class="rd-rate-btn" data-rate="4.0"  onclick="rdSetRate(this)">4.0x</button>
+            <button class="rd-rate-btn" data-rate="5.0"  onclick="rdSetRate(this)">5.0x</button>
+        </div>
+    </div>
+    <span id="rd-hint">カードをクリック → そこから連続再生</span>
 </div>
 
 <!-- HINT BAR -->
@@ -864,13 +1971,15 @@
     <div class="hint-item"><kbd>0</kbd>/<kbd>Esc</kbd> <span>閉じる</span></div>
     <div class="hint-item"><kbd>F1</kbd>〜<kbd>F8</kbd> <span>シナリオ切替</span></div>
     <div class="hint-item"><kbd>↑</kbd><kbd>↓</kbd> <span>スクロール</span></div>
-    <div class="hint-item"><kbd>Ctrl+F</kbd> <span>検索</span></div>
+    <div class="hint-item"><kbd>Ctrl+F</kbd> <span>検索（詳細表示中は本文内検索）</span></div>
     <div class="hint-item">ホバー <span>プレビュー</span></div>
     <div class="hint-item">クリック <span>固定表示</span></div>
 </div>
 
 <!-- VIEW MODE BANNER -->
 <div class="view-mode-banner">👁 閲覧モード — 編集は無効です</div>
+<!-- [NEW] INTERVIEW MODE BANNER -->
+<div class="interview-mode-banner">🎤 録音練習モード — ▶ を押すと質問読み上げ後に録音開始</div>
 
 <!-- OVERLAY -->
 <div id="overlay-backdrop" onclick="handleBackdropClick()"></div>
@@ -880,6 +1989,15 @@
     <!-- サイズ調整パネル開閉ボタン（閲覧モード専用） -->
     <button id="size-panel-btn" onclick="toggleSizePanel(event)" title="表示サイズを調整">⇔</button>
     <button id="edit-mode-btn" onclick="toggleEditMode()" title="編集モード">✏️</button>
+    <!-- 本文内検索バー -->
+    <div id="overlay-find-bar">
+        <span class="find-icon">🔍</span>
+        <input type="text" id="overlay-find-input" placeholder="本文内を検索..." oninput="overlayFindInput(this.value)" onkeydown="overlayFindKeydown(event)">
+        <span id="overlay-find-count"></span>
+        <button class="find-nav-btn" onclick="overlayFindStep(-1)" title="前へ (Shift+Enter)">▲</button>
+        <button class="find-nav-btn" onclick="overlayFindStep(1)" title="次へ (Enter)">▼</button>
+        <button class="find-close-btn" onclick="overlayFindClose()" title="閉じる (Esc)">×</button>
+    </div>
     <!-- サイズ調整パネル本体 -->
     <div id="size-panel">
         <div class="sp-row">
@@ -903,13 +2021,20 @@
         </div>
     </div>
     <div id="overlay-title"></div>
-    <input type="text" id="overlay-title-edit" placeholder="タイトルを編集...">
+    <div id="overlay-title-edit-row" class="overlay-field-row">
+        <input type="text" id="overlay-title-edit" placeholder="タイトルを編集...">
+        <button class="overlay-field-clear" id="overlay-title-clear" onclick="overlayClearField('title')" title="タイトルを削除">×</button>
+    </div>
     <div id="overlay-text"></div>
-    <textarea id="overlay-edit" placeholder="内容を編集..."></textarea>
+    <div id="overlay-edit-row" class="overlay-field-row overlay-field-row-grow">
+        <textarea id="overlay-edit" placeholder="内容を編集..."></textarea>
+        <button class="overlay-field-clear" id="overlay-edit-clear" onclick="overlayClearField('content')" title="本文を削除">×</button>
+    </div>
     <div id="speech-bar">
         <button class="speech-btn" id="speech-play-btn"  onclick="speechPlay()"  title="再生">▶</button>
         <button class="speech-btn" id="speech-pause-btn" onclick="speechPause()" title="一時停止" disabled>⏸</button>
         <button class="speech-btn" id="speech-stop-btn"  onclick="speechStop()"  title="停止" disabled>■</button>
+        <button class="speech-btn" id="speech-clicklock-btn" onclick="toggleSpeechClickMode()" title="本文クリックでの朗読開始のON/OFF">🔒</button>
         <div id="speech-status"></div>
         <select id="speech-rate" onchange="speechUpdateRate()" title="読み上げ速度">
             <option value="0.6">0.6x</option>
@@ -919,7 +2044,25 @@
             <option value="1.5">1.5x</option>
             <option value="1.7">1.7x</option>
             <option value="2.0">2.0x</option>
+            <option value="2.5">2.5x</option>
+            <option value="3.0">3.0x</option>
+            <option value="3.5">3.5x</option>
+            <option value="4.0">4.0x</option>
+            <option value="4.5">4.5x</option>
+            <option value="5.0">5.0x</option>
         </select>
+    </div>
+    <!-- [NEW] 録音モード：録音ステータスバー -->
+    <div id="itv-bar">
+        <div id="itv-rec-dot"></div>
+        <span id="itv-rec-label">🔴 録音中</span>
+        <span id="itv-elapsed">0:00</span>
+        <button id="itv-done-btn" onclick="itvStopRecording()">回答完了</button>
+    </div>
+    <!-- [NEW] 録音モード：録音履歴 -->
+    <div id="itv-history">
+        <div class="itv-history-label">録音履歴</div>
+        <div id="itv-history-list"></div>
     </div>
 </div>
 
@@ -938,6 +2081,8 @@
                 <button class="modal-btn" onclick="copyToClipboard('active')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
                 <button class="modal-btn" onclick="exportActiveJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
                 <button class="modal-btn" onclick="exportActiveCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <!-- [NEW] Markdown出力 -->
+                <button class="modal-btn" onclick="exportActiveMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">ファイル名：シナリオ名-列数-日時</div>
         </div>
@@ -948,8 +2093,18 @@
                 <button class="modal-btn" onclick="copyToClipboard('all')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
                 <button class="modal-btn" onclick="exportJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
                 <button class="modal-btn" onclick="exportCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <!-- [NEW] Markdown出力（全シナリオ） -->
+                <button class="modal-btn" onclick="exportMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
-            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">JSON：完全バックアップ（推奨）／CSV：表計算ソフト対応</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">JSON：完全バックアップ（推奨）／CSV：表計算ソフト対応／MD：閲覧・共有向け</div>
+        </div>
+        <!-- [NEW] 録音データ -->
+        <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:0.62rem;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">録音データ</div>
+            <div style="display:flex;gap:6px;">
+                <button class="modal-btn" onclick="itvDownloadActiveScenario()" title="このシナリオの録音を全DL"><span class="modal-btn-icon">🎤</span><span>シナリオ全DL</span></button>
+            </div>
+            <div id="itv-modal-count" style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">読み込み中...</div>
         </div>
         <!-- インポート -->
         <div style="border-top:1px solid var(--border);padding-top:16px;">
@@ -961,6 +2116,11 @@
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">⚠️ 現在のデータは上書きされます</div>
             <input type="file" id="importFileJSON" accept=".json" style="display:none" onchange="importJSON(event)">
             <input type="file" id="importFileCSV"  accept=".csv"  style="display:none" onchange="importCSV(event)">
+            <!-- [NEW] 貼り付けで読み込み（JSON / Markdownを自動判定） -->
+            <div style="margin-top:12px;">
+                <textarea id="paste-import-area" placeholder="ここにJSONまたはMarkdownを貼り付け…" style="width:100%;height:64px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.72rem;padding:8px 10px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;"></textarea>
+                <button class="modal-btn" style="width:100%;margin-top:6px;" onclick="importFromPaste()"><span class="modal-btn-icon">📥</span><span>貼り付けた内容を読み込む</span></button>
+            </div>
         </div>
     </div>
 </div>
@@ -986,66 +2146,7 @@
         </div>
         <div id="timer-presets">
             <button class="t-preset" data-secs="30"  onclick="setTimer(30)">30s</button>
-            <button class="t-preset" data-secs="60"  onclick="
-// ===== TIMER SOUND =====
-var timerSoundOn = localStorage.getItem('kp_timer_sound') === 'on';
-
-function toggleTimerSound() {
-    timerSoundOn = !timerSoundOn;
-    localStorage.setItem('kp_timer_sound', timerSoundOn ? 'on' : 'off');
-    var btn = document.getElementById('timer-sound-btn');
-    if (btn) { btn.textContent = timerSoundOn ? '🔔' : '🔕'; btn.classList.toggle('sound-on', timerSoundOn); }
-    if (timerSoundOn) playTimerSound();
-}
-
-function playTimerSound() {
-    try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        var osc = ctx.createOscillator(), gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.4);
-        osc.onended = function() { ctx.close(); };
-    } catch(e) {}
-}
-
-// ===== TIMER DIRECT INPUT =====
-function timerEnterEdit() {
-    if (timerRunning) return;
-    var disp = document.getElementById('timer-display'), edit = document.getElementById('timer-edit'), input = document.getElementById('timer-edit-input');
-    if (!disp || !edit || !input) return;
-    var m = Math.floor(timerLeft / 60), s = timerLeft % 60;
-    input.value = m + ':' + (s < 10 ? '0' : '') + s;
-    disp.style.display = 'none'; edit.style.display = 'block';
-    setTimeout(function() { input.select(); }, 30);
-}
-
-function timerCommitEdit() {
-    var disp = document.getElementById('timer-display'), edit = document.getElementById('timer-edit'), input = document.getElementById('timer-edit-input');
-    if (!disp || !edit || !input) return;
-    var secs = parseTimerInput(input.value.trim());
-    if (secs && secs > 0) { document.querySelectorAll('.t-preset').forEach(function(b){ b.classList.remove('selected'); }); timerTotal = secs; timerLeft = secs; updateTimerDisplay(); }
-    disp.style.display = ''; edit.style.display = 'none';
-}
-
-function timerEditKey(e) {
-    if (e.key === 'Enter') { e.target.blur(); }
-    if (e.key === 'Escape') { document.getElementById('timer-display').style.display = ''; document.getElementById('timer-edit').style.display = 'none'; }
-}
-
-function parseTimerInput(str) {
-    str = str.replace(/[^0-9:]/g, '');
-    if (!str) return null;
-    if (str.indexOf(':') >= 0) { var p = str.split(':'); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
-    return parseInt(str, 10) || null;
-}
-
-setTimer(60)">1m</button>
+            <button class="t-preset" data-secs="60"  onclick="setTimer(60)">1m</button>
             <button class="t-preset" data-secs="120" onclick="setTimer(120)">2m</button>
             <button class="t-preset" data-secs="180" onclick="setTimer(180)">3m</button>
         </div>
@@ -1057,6 +2158,24 @@ setTimer(60)">1m</button>
     </div>
 </div>
 <div id="timer-flash"></div>
+
+<!-- PIP CAPTURE WINDOW -->
+<div id="pip-capture">
+  <canvas id="pip-cap-canvas"></canvas>
+  <div id="pip-cap-icon">📷</div>
+  <div id="pip-cap-close" onclick="pipStop()">✕</div>
+  <div id="pip-cap-reset" onclick="pipResetView()" title="表示位置リセット">⌖</div>
+  <div class="pip-resize-handle nw" data-dir="nw"></div>
+  <div class="pip-resize-handle ne" data-dir="ne"></div>
+  <div class="pip-resize-handle sw" data-dir="sw"></div>
+  <div class="pip-resize-handle se" data-dir="se"></div>
+  <div id="pip-cap-controls">
+    🔍
+    <input type="range" id="pip-zoom-slider" min="20" max="400" value="100" oninput="pipOnZoomSlider(this.value)">
+    <span id="pip-zoom-label">100%</span>
+  </div>
+</div>
+<video id="pip-hidden-video" autoplay muted style="display:none"></video>
 
 <script>
 // ===== STATE =====
@@ -1083,6 +2202,7 @@ let saveTimeout  = null;
 
 let scenarios        = [];
 let activeScenarioId = null;
+let scenarioDragSrc  = null;
 let currentQuery     = '';
 
 // ===== SAVE INDICATOR =====
@@ -1108,19 +2228,42 @@ function triggerSave(fn) {
 function setAppMode(mode) {
     appMode = mode;
     localStorage.setItem('kp_mode', mode);
+    document.body.classList.remove('view-mode', 'edit-mode-active', 'interview-mode', 'reading-mode');
+    document.getElementById('editModeBtn').classList.remove('active');
+    document.getElementById('viewModeBtn').classList.remove('active');
+    document.getElementById('readingModeBtn').classList.remove('active');
+    document.getElementById('interviewModeBtn').classList.remove('active');
+
     if (mode === 'view') {
         document.body.classList.add('view-mode');
-        document.body.classList.remove('edit-mode-active');
         document.getElementById('viewModeBtn').classList.add('active');
-        document.getElementById('editModeBtn').classList.remove('active');
         showToast('👁 閲覧モード');
+        itvClearRecMarks();
+        if (typeof rdStop === "function") rdStop();
+    } else if (mode === 'reading') {
+        document.body.classList.add('reading-mode');
+        document.getElementById('readingModeBtn').classList.add('active');
+        showToast('📖 朗読モード — カードをクリック（またはタップ）して開始');
+        itvClearRecMarks();
+        // rdItemsを事前ビルドしてモバイルでも即再生可能に
+        setTimeout(function() {
+            if (typeof rdBuildItems === 'function') { rdBuildItems(null); rdUpdateUI(); }
+        }, 100);
+    } else if (mode === 'interview') {
+        document.body.classList.add('interview-mode');
+        document.getElementById('interviewModeBtn').classList.add('active');
+        showToast('🎤 録音練習モード');
+        itvMarkRecordedCards();
+        if (typeof rdStop === "function") rdStop();
     } else {
-        document.body.classList.remove('view-mode');
         document.body.classList.add('edit-mode-active');
         document.getElementById('editModeBtn').classList.add('active');
-        document.getElementById('viewModeBtn').classList.remove('active');
         showToast('✏️ 編集モード');
+        itvClearRecMarks();
+        if (typeof rdStop === "function") rdStop();
     }
+    // モバイルスワイプUIの編集可否・対象データを再同期
+    if (typeof mSync === 'function') { setTimeout(mSync, 0); }
 }
 
 // ===== SCENARIOS =====
@@ -1135,17 +2278,18 @@ function loadScenarios() {
     } catch(e) {}
     if (scenarios.length === 0) {
         scenarios = [
-            { id: uid(), name: 'シナリオ1', cols: 4, data: [] },
-            { id: uid(), name: 'シナリオ2', cols: 4, data: [] },
-            { id: uid(), name: 'シナリオ3', cols: 4, data: [] },
-            { id: uid(), name: 'シナリオ4', cols: 4, data: [] },
+            { id: uid(), name: 'シナリオ1', cols: 4, rows: 4, data: [] },
+            { id: uid(), name: 'シナリオ2', cols: 4, rows: 4, data: [] },
+            { id: uid(), name: 'シナリオ3', cols: 4, rows: 4, data: [] },
+            { id: uid(), name: 'シナリオ4', cols: 4, rows: 4, data: [] },
         ];
         activeScenarioId = scenarios[0].id;
     }
     // 旧データ移行：cols フィールドがなければ補完
     scenarios.forEach(function(s) {
-        if (!s.cols) s.cols = gridCols;
-    });
+    if (!s.cols) s.cols = 4;
+    if (!s.rows) s.rows = 4;
+});
     if (!scenarios.find(function(s){ return s.id === activeScenarioId; })) {
         activeScenarioId = scenarios[0] ? scenarios[0].id : null;
     }
@@ -1154,6 +2298,11 @@ function loadScenarios() {
 function getActiveCols() {
     var a = getActive();
     return (a && a.cols) ? a.cols : 4;
+}
+
+function getActiveRows() {
+    var a = getActive();
+    return (a && a.rows) ? a.rows : 4;
 }
 
 function saveScenarios() {
@@ -1191,7 +2340,12 @@ function toggleTheme() {
 (function init() {
     applyTheme();
     loadScenarios();
-    setAppMode(appMode);
+    // [MODIFIED] interview モードも復元
+    if (appMode === 'interview') {
+        setAppMode('interview');
+    } else {
+        setAppMode(appMode);
+    }
     setSaveState('saved');
 
     document.getElementById('fontSizeSlider').value    = Math.min(currentFontSize, 100);
@@ -1203,11 +2357,15 @@ function toggleTheme() {
     overlay.style.width  = currentWidth + '%';
     overlay.style.height = currentHeight + '%';
     document.getElementById('colsInput').value = getActiveCols();
+    var _initActive = getActive();
+    var _rowsEl = document.getElementById('rowsInput');
+    if (_rowsEl) _rowsEl.value = (_initActive && _initActive.rows) ? _initActive.rows : 4;
 
     renderScenarioTabs();
     updateGrid();
     bindControls();
     bindKeyboard();
+    applySpeechClickLockUI();
 
     // Show tutorial if first time
     var tutorialDone = localStorage.getItem('kp_tutorial_done');
@@ -1223,7 +2381,7 @@ function showTutorial() {
     <div id="tutorial-modal">
         <div class="tutorial-header">
             <div class="tutorial-logo">Qcard PRO</div>
-            <div class="tutorial-subtitle">面接・プレゼン用キューカード管理ツールへようこそ。<br>まずは基本的な使い方を確認しましょう。</div>
+            <div class="tutorial-subtitle">面接・録音・プレゼン用キューカード管理ツールへようこそ。<br>まずは基本的な使い方を確認しましょう。</div>
         </div>
         <div class="tutorial-steps">
             <div class="tutorial-step">
@@ -1281,6 +2439,35 @@ function renderScenarioTabs() {
         var isActive = s.id === activeScenarioId;
         var tab = document.createElement('div');
         tab.className = 'scenario-tab' + (isActive ? ' active' : '');
+        tab.draggable = true;
+        tab.dataset.sid = s.id;
+
+        tab.addEventListener('dragstart', function(e) {
+            scenarioDragSrc = s.id;
+            tab.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', s.id); } catch(err) {}
+        });
+        tab.addEventListener('dragend', function() {
+            tab.classList.remove('dragging');
+            document.querySelectorAll('.scenario-tab').forEach(function(t){ t.classList.remove('drag-over'); });
+            scenarioDragSrc = null;
+        });
+        tab.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (!scenarioDragSrc || scenarioDragSrc === s.id) return;
+            tab.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'move';
+        });
+        tab.addEventListener('dragleave', function() {
+            tab.classList.remove('drag-over');
+        });
+        tab.addEventListener('drop', function(e) {
+            e.preventDefault();
+            tab.classList.remove('drag-over');
+            if (!scenarioDragSrc || scenarioDragSrc === s.id) return;
+            reorderScenarios(scenarioDragSrc, s.id);
+        });
 
         var key = document.createElement('span');
         key.className = 'tab-key';
@@ -1308,16 +2495,14 @@ function renderScenarioTabs() {
         tab.appendChild(key);
         tab.appendChild(name);
 
-        if (idx >= 4) {
-            var del = document.createElement('button');
-            del.className = 'tab-delete';
-            del.textContent = '×';
-            del.title = '削除';
-            del.addEventListener('click', (function(sid) {
-                return function(e) { e.stopPropagation(); deleteScenario(sid); };
-            })(s.id));
-            tab.appendChild(del);
-        }
+        var del = document.createElement('button');
+        del.className = 'tab-delete';
+        del.textContent = '×';
+        del.title = '削除';
+        del.addEventListener('click', (function(sid) {
+            return function(e) { e.stopPropagation(); deleteScenario(sid); };
+        })(s.id));
+        tab.appendChild(del);
 
         tab.addEventListener('click', (function(sid) {
             return function(e) {
@@ -1335,23 +2520,34 @@ function switchScenario(id) {
     activeScenarioId = id;
     saveScenarios();
     renderScenarioTabs();
-    // シナリオごとの列数をコントロールに反映
-    document.getElementById('colsInput').value = getActiveCols();
+    var active = getActive();
+    document.getElementById('colsInput').value = active ? active.cols : 4;
+    var rowsEl = document.getElementById('rowsInput');
+    if (rowsEl) rowsEl.value = (active && active.rows) ? active.rows : 4;
     updateGrid();
     applySearch(currentQuery);
     hideOverlay();
-    var s = scenarios.find(function(sc){ return sc.id === id; });
-    showToast('シナリオ: ' + (s ? s.name : ''));
+    showToast('シナリオ: ' + (active ? active.name : ''));
 }
 
 function addScenario() {
     saveCurrentGridData();
-    var s = { id: uid(), name: 'シナリオ' + (scenarios.length + 1), cols: getActiveCols(), data: [] };
+    var s = { id: uid(), name: 'シナリオ' + (scenarios.length + 1), cols: getActiveCols(), rows: getActiveRows(), data: [] };
     scenarios.push(s);
     activeScenarioId = s.id;
     saveScenarios();
     renderScenarioTabs();
     updateGrid();
+}
+
+function reorderScenarios(srcId, targetId) {
+    var srcIdx = scenarios.findIndex(function(s){ return s.id === srcId; });
+    var tgtIdx = scenarios.findIndex(function(s){ return s.id === targetId; });
+    if (srcIdx === -1 || tgtIdx === -1 || srcIdx === tgtIdx) return;
+    var moved = scenarios.splice(srcIdx, 1)[0];
+    scenarios.splice(tgtIdx, 0, moved);
+    saveScenarios();
+    renderScenarioTabs();
 }
 
 function deleteScenario(id) {
@@ -1363,6 +2559,20 @@ function deleteScenario(id) {
     saveScenarios();
     renderScenarioTabs();
     updateGrid();
+}
+
+function getCurrentGridData() {
+    var items = grid.querySelectorAll('.grid-item');
+    var result = [];
+    items.forEach(function(item) {
+        var t = item.querySelector('.title-input');
+        var c = item.querySelector('.content-textarea');
+        result.push({
+            title:   t ? t.value : '',
+            content: c ? c.value : ''
+        });
+    });
+    return result;
 }
 
 function saveCurrentGridData() {
@@ -1385,34 +2595,51 @@ function saveCurrentGridDataWithIndicator() {
 // ===== GRID =====
 function updateGrid() {
     var cols = getActiveCols();
-    var rows = parseInt((document.getElementById('rowsInput')||{value:4}).value, 10) || 4;
-    grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
-    grid.style.gridTemplateRows    = 'repeat(' + rows + ', 1fr)';
+    var rows = getActiveRows();
     var active = getActive();
-    renderGrid(active ? active.data : [], rows * cols);
-}
-
-function getCurrentGridData() {
-    return Array.from(grid.querySelectorAll('.grid-item')).map(function(item) {
-        return {
-            title:   item.querySelector('.title-input').value,
-            content: item.querySelector('.content-textarea').value,
-        };
-    });
+    var data = active ? active.data : [];
+    var total = rows * cols;
+    var rowsEl = document.getElementById('rowsInput');
+    if (rowsEl) rowsEl.value = rows;
+    grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+    grid.style.gridTemplateRows = '';
+    renderGrid(data, total);
 }
 
 function renderGrid(data, total) {
     grid.innerHTML = '';
     var cols = getActiveCols();
-    var rows = parseInt((document.getElementById('rowsInput')||{value:4}).value, 10) || 4;
+    var rows = getActiveRows();
     if (total === undefined) total = rows * cols;
     for (var i = 0; i < total; i++) {
         var d = data[i] || { title: '', content: '' };
         grid.appendChild(createItem(i, d));
     }
+    // モバイルグリッドモード時はタイトルラベルを再同期
+    if (document.body.classList.contains('mob-grid') &&
+        typeof mobSyncTitleLabels === 'function') {
+        mobSyncTitleLabels();
+    }
 }
 
-function addRow() { /* 互換性のため残す */ }
+function addRow() {
+    var active = getActive();
+    if (!active) return;
+    saveCurrentGridData();
+    active.rows = (active.rows || getActiveRows()) + 1;
+    saveScenarios();
+    var rowsEl = document.getElementById('rowsInput');
+    if (rowsEl) rowsEl.value = active.rows;
+    var rowsMob = document.getElementById('rowsInputMob');
+    if (rowsMob) rowsMob.value = active.rows;
+    updateGrid();
+    // スワイプモードなら追加した最後の行の先頭カードへジャンプ
+    if (mobView === 'swipe' && typeof mSetIdx === 'function') {
+        var cols = getActiveCols();
+        var newIdx = (active.rows - 1) * cols;
+        setTimeout(function(){ mSetIdx(newIdx); }, 80);
+    }
+}
 
 function createItem(index, d) {
     var item = document.createElement('div');
@@ -1455,7 +2682,8 @@ function createItem(index, d) {
         return function() {
             if (isLocked) return;
             clearTimeout(hideTimeout);
-            showOverlay(t.value, c.value);
+            // [MOD] 朗読モードでもホバーでプレビュー表示する（本文クリックで朗読開始するため）
+            showOverlay(t.value, c.value, item);
         };
     })(titleInput, contentTextarea));
 
@@ -1467,7 +2695,10 @@ function createItem(index, d) {
     item.addEventListener('click', (function(t, c) {
         return function(e) {
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.classList.contains('drag-handle')) return;
-            if (appMode === 'view' || c.value.trim() || t.value.trim()) {
+            // [MOD] 朗読モード中はカード本体クリックでの全文朗読開始は行わない
+            // （オーバーレイ内の文節クリックで該当箇所から開始する方式に統一）
+            if (appMode === 'reading') return;
+            if (appMode === 'view' || appMode === 'interview' || c.value.trim() || t.value.trim()) {
                 isLocked = true;
                 showOverlay(t.value, c.value, item);
             }
@@ -1481,6 +2712,46 @@ function createItem(index, d) {
         });
     });
 
+    var titleRow = document.createElement('div');
+    titleRow.className = 'field-row title-row';
+    var titleClear = document.createElement('button');
+    titleClear.className = 'field-clear-btn';
+    titleClear.type = 'button';
+    titleClear.title = 'タイトルを削除';
+    titleClear.textContent = '×';
+    titleClear.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    titleClear.addEventListener('click', (function(t) {
+        return function(e) {
+            e.stopPropagation();
+            if (!t.value) return;
+            t.value = '';
+            saveCurrentGridDataWithIndicator();
+            if (currentQuery) applySearch(currentQuery);
+        };
+    })(titleInput));
+    titleRow.appendChild(titleInput);
+    titleRow.appendChild(titleClear);
+
+    var contentRow = document.createElement('div');
+    contentRow.className = 'field-row content-row';
+    var contentClear = document.createElement('button');
+    contentClear.className = 'field-clear-btn';
+    contentClear.type = 'button';
+    contentClear.title = '本文を削除';
+    contentClear.textContent = '×';
+    contentClear.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    contentClear.addEventListener('click', (function(c) {
+        return function(e) {
+            e.stopPropagation();
+            if (!c.value) return;
+            c.value = '';
+            saveCurrentGridDataWithIndicator();
+            if (currentQuery) applySearch(currentQuery);
+        };
+    })(contentTextarea));
+    contentRow.appendChild(contentTextarea);
+    contentRow.appendChild(contentClear);
+
     item.addEventListener('dragstart', handleDragStart);
     item.addEventListener('dragover',  handleDragOver);
     item.addEventListener('drop',      handleDrop);
@@ -1488,8 +2759,8 @@ function createItem(index, d) {
 
     item.appendChild(handle);
     item.appendChild(meta);
-    item.appendChild(titleInput);
-    item.appendChild(contentTextarea);
+    item.appendChild(titleRow);
+    item.appendChild(contentRow);
     return item;
 }
 
@@ -1555,7 +2826,12 @@ function showOverlay(title, text, cardItem) {
     if (cardItem !== undefined) editCardItem = cardItem;
     overlayTitle.innerText = title;
     overlayTitle.style.display = title.trim() ? 'block' : 'none';
-    overlayText.innerText  = text;
+    // [MOD] 朗読モード中は文節クリックで「そこから朗読開始」できるHTMLを生成
+    if (typeof appMode !== 'undefined' && appMode === 'reading' && typeof rdSplitSentences === 'function') {
+        overlayText.innerHTML = buildReadingSentenceHTML(text);
+    } else {
+        overlayText.innerHTML = buildSpeechSentenceHTML(text);
+    }
     overlayText.style.fontSize = currentFontSize + 'px';
     overlay.style.display  = 'flex';
     if (!overlay.dataset.dragged) {
@@ -1563,9 +2839,9 @@ function showOverlay(title, text, cardItem) {
         overlay.style.top  = '50%';
         overlay.style.left = '50%';
     }
-    // edit-mode-btn: hide in view mode
+    // edit-mode-btn: hide in view/interview/reading mode
     var emb = document.getElementById('edit-mode-btn');
-    if (emb) emb.style.display = appMode === 'view' ? 'none' : '';
+    if (emb) emb.style.display = (appMode === 'view' || appMode === 'interview' || appMode === 'reading') ? 'none' : '';
 
     // size-bar の表示値を現在値に同期
     syncSizeBar();
@@ -1577,12 +2853,47 @@ function showOverlay(title, text, cardItem) {
         backdrop.style.display = 'none';
         grid.classList.remove('dimmed');
     }
+
+    // [NEW] 録音モード：カードIDを特定して履歴表示
+    if (appMode === 'interview' && editCardItem) {
+        var cardId = itvGetCardId(editCardItem);
+        itvRenderHistory(cardId);
+    } else {
+        itvHideHistory();
+    }
 }
+
+// [NEW] 朗読モード専用：文節spanを生成し、クリックでその文節から朗読開始できるようにする
+function buildReadingSentenceHTML(text) {
+    if (!text) return '';
+    var sentences = rdSplitSentences(text);
+    var html = '';
+    sentences.forEach(function(s, i) {
+        html += '<span class="speech-sentence" onclick="rdStartFromOverlaySentence(' + i + ')">' + escapeHtml(s) + '</span>';
+    });
+    return html;
+}
+
+// [NEW] オーバーレイ内の文節クリック → その文節からそのカードを起点に朗読開始
+window.rdStartFromOverlaySentence = function(contentSentIdx) {
+    if (!editCardItem) return;
+    var t = editCardItem.querySelector('.title-input');
+    var titleOffset = (typeof rdReadTitle !== 'undefined' && rdReadTitle && t && t.value) ? 1 : 0;
+    var fromSentIdx = contentSentIdx + titleOffset;
+    window.rdStartFrom(editCardItem, fromSentIdx);
+};
 
 function hideOverlay() {
     exitEditMode();
     closeSizePanel();
-    speechReset();
+    // 朗読モード中は連続朗読のspeechSynthesisを止めない
+    if (typeof appMode === 'undefined' || appMode !== 'reading') {
+        speechReset();
+    }
+    overlayFindClose();
+    // [NEW] 録音モード：録音中なら停止
+    if (itvRecording) { itvStopRecording(); }
+    itvHideHistory();
     overlay.style.display  = 'none';
     backdrop.style.display = 'none';
     grid.classList.remove('dimmed');
@@ -1593,15 +2904,142 @@ function hideOverlay() {
 
 function handleBackdropClick() { if (isLocked) hideOverlay(); }
 
+// ===== 本文内検索（Ctrl+F） =====
+var findMatches  = [];
+var findIndex    = -1;
+var findRawText  = '';
+
+function overlayFindOpen() {
+    var bar   = document.getElementById('overlay-find-bar');
+    var input = document.getElementById('overlay-find-input');
+    bar.classList.add('active');
+    input.focus();
+    if (input.value) overlayFindInput(input.value); else input.select();
+}
+
+function overlayFindClose() {
+    var bar   = document.getElementById('overlay-find-bar');
+    var input = document.getElementById('overlay-find-input');
+    bar.classList.remove('active');
+    input.value = '';
+    document.getElementById('overlay-find-count').textContent = '';
+    document.getElementById('overlay-find-count').classList.remove('no-match');
+    findMatches = []; findIndex = -1;
+    overlayFindRender('');
+    var ce = document.getElementById('overlay-edit');
+    ce.classList.remove('find-highlight-active');
+}
+
+function overlayFindRender(term) {
+    if (isEditMode) return; // 編集中は textarea 側で処理
+    var raw = findRawText || overlayText.innerText;
+    overlayText.innerHTML = buildSpeechSentenceHTML(raw, term);
+}
+
+function overlayFindInput(value) {
+    var countEl = document.getElementById('overlay-find-count');
+    findRawText = isEditMode
+        ? document.getElementById('overlay-edit').value
+        : overlayText.innerText;
+
+    if (!value) {
+        findMatches = []; findIndex = -1;
+        countEl.textContent = '';
+        countEl.classList.remove('no-match');
+        overlayFindRender('');
+        document.getElementById('overlay-edit').classList.remove('find-highlight-active');
+        return;
+    }
+
+    // マッチ位置を収集
+    findMatches = [];
+    var re = new RegExp(escapeRegExp(value), 'gi');
+    var m;
+    while ((m = re.exec(findRawText)) !== null) {
+        findMatches.push(m.index);
+        if (m.index === re.lastIndex) re.lastIndex++;
+    }
+
+    if (findMatches.length === 0) {
+        findIndex = -1;
+        countEl.textContent = '0/0';
+        countEl.classList.add('no-match');
+        if (isEditMode) {
+            document.getElementById('overlay-edit').classList.remove('find-highlight-active');
+        } else {
+            overlayFindRender(value);
+        }
+        return;
+    }
+
+    countEl.classList.remove('no-match');
+    findIndex = 0;
+    countEl.textContent = (findIndex + 1) + '/' + findMatches.length;
+
+    if (isEditMode) {
+        overlayFindSelectInTextarea(value);
+    } else {
+        overlayFindRender(value);
+        overlayFindScrollToCurrent(value);
+    }
+}
+
+function overlayFindStep(dir) {
+    if (findMatches.length === 0) return;
+    findIndex = (findIndex + dir + findMatches.length) % findMatches.length;
+    document.getElementById('overlay-find-count').textContent = (findIndex + 1) + '/' + findMatches.length;
+    var value = document.getElementById('overlay-find-input').value;
+    if (isEditMode) {
+        overlayFindSelectInTextarea(value);
+    } else {
+        overlayFindScrollToCurrent(value);
+    }
+}
+
+function overlayFindSelectInTextarea(value) {
+    var ta  = document.getElementById('overlay-edit');
+    var pos = findMatches[findIndex];
+    ta.classList.add('find-highlight-active');
+    ta.focus();
+    ta.setSelectionRange(pos, pos + value.length);
+    // 選択箇所が見えるようスクロール
+    var before = ta.value.slice(0, pos);
+    var lineNum = before.split('\n').length;
+    var lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+    ta.scrollTop = Math.max(0, (lineNum - 3) * lineHeight);
+}
+
+function overlayFindScrollToCurrent(value) {
+    overlayText.querySelectorAll('.overlay-find-hit').forEach(function(el){ el.classList.remove('find-current'); });
+    var hits = overlayText.querySelectorAll('.overlay-find-hit');
+    var target = hits[findIndex];
+    if (target) {
+        target.classList.add('find-current');
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+}
+
+function overlayFindKeydown(e) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); overlayFindClose(); return; }
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        overlayFindStep(e.shiftKey ? -1 : 1);
+    }
+}
+
 // ===== KEYBOARD =====
 function bindKeyboard() {
     document.addEventListener('keydown', function(e) {
         var tag = document.activeElement ? document.activeElement.tagName : '';
         var isEditing = (tag === 'TEXTAREA' || tag === 'INPUT');
 
-        // Ctrl+F → focus search
+        // Ctrl+F → 詳細表示中は本文内検索、それ以外はカード検索
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
+            if (overlay.style.display === 'flex') {
+                overlayFindOpen();
+                return;
+            }
             var si = document.getElementById('search-input');
             si.focus(); si.select();
             return;
@@ -1687,17 +3125,58 @@ function bindControls() {
     });
     if (document.getElementById('rowsInput')) {
         document.getElementById('rowsInput').addEventListener('change', function() {
-            saveCurrentGridData(); updateGrid();
+            var rows = parseInt(this.value, 10) || 4;
+            rows = Math.max(1, rows);
+            var active = getActive();
+            var cols = getActiveCols();
+            var newTotal = rows * cols;
+            var currentData = getCurrentGridData();
+
+            // 削減する場合、切り捨てられる範囲にデータがあるか確認
+            if (newTotal < currentData.length) {
+                var willLose = currentData.slice(newTotal).some(function(d) {
+                    return (d.title && d.title.trim()) || (d.content && d.content.trim());
+                });
+                if (willLose) {
+                    if (!confirm('行を減らすと、はみ出したカードのデータが削除されます。よろしいですか？')) {
+                        // キャンセル：元の行数に戻す
+                        this.value = active ? active.rows : 4;
+                        return;
+                    }
+                    // 確認後：データも切り捨て
+                    if (active) { active.data = currentData.slice(0, newTotal); }
+                }
+            }
+
+            this.value = rows;
+            if (active) { active.rows = rows; saveScenarios(); }
+            saveCurrentGridData();
+            updateGrid();
         });
     }
     document.getElementById('colsInput').addEventListener('change', function() {
-        saveCurrentGridData();
-        var cols = parseInt(document.getElementById('colsInput').value, 10) || 1;
-        cols = Math.max(1, Math.min(10, cols));
-        document.getElementById('colsInput').value = cols;
+        var cols = parseInt(this.value, 10) || 1;
+        cols = Math.max(1, cols);
         var active = getActive();
+        var rows = getActiveRows();
+        var newTotal = rows * cols;
+        var currentData = getCurrentGridData();
+
+        if (newTotal < currentData.length) {
+            var willLose = currentData.slice(newTotal).some(function(d) {
+                return (d.title && d.title.trim()) || (d.content && d.content.trim());
+            });
+            if (willLose) {
+                if (!confirm('列を減らすと、はみ出したカードのデータが削除されます。よろしいですか？')) {
+                    this.value = active ? active.cols : 4;
+                    return;
+                }
+                if (active) { active.data = currentData.slice(0, newTotal); }
+            }
+        }
+
+        this.value = cols;
         if (active) { active.cols = cols; }
-        localStorage.setItem('kp_cols', cols);
         saveScenarios();
         updateGrid();
     });
@@ -1784,6 +3263,13 @@ function openDataModal() {
     saveCurrentGridData();
     document.getElementById('data-modal-backdrop').style.display = 'block';
     document.getElementById('data-modal').style.display          = 'block';
+    // [NEW] 録音件数を表示
+    itvCountActiveScenarioRecs().then(function(count) {
+        var el = document.getElementById('itv-modal-count');
+        if (el) el.textContent = count > 0
+            ? '現在のシナリオに ' + count + ' 件の録音があります'
+            : '現在のシナリオに録音はありません';
+    });
 }
 function closeDataModal() {
     document.getElementById('data-modal-backdrop').style.display = 'none';
@@ -1850,21 +3336,168 @@ function csvEscape(str) {
     return /[,"\r\n]/.test(s) ? '"' + s + '"' : s;
 }
 
+// [NEW] Markdown形式の生成（1シナリオ分）
+// # シナリオ名
+//
+// ## カードタイトル
+// 内容
+function buildScenarioMD(s) {
+    var lines = ['# ' + (s.name || 'シナリオ'), ''];
+    (s.data || []).forEach(function(card) {
+        if (!card.title && !card.content) return;
+        lines.push('## ' + (card.title || '（タイトルなし）'));
+        lines.push('');
+        if (card.content) lines.push(card.content);
+        lines.push('');
+    });
+    return lines.join('\n').trim() + '\n';
+}
+
+// [NEW] このシナリオをMarkdownでダウンロード
+function exportActiveMD() {
+    var a = getActive(); if (!a) return;
+    var blob = new Blob([buildScenarioMD(a)], { type: 'text/markdown;charset=utf-8' });
+    downloadBlob(blob, activeFilename('md'));
+    showToast('このシナリオをMarkdown保存'); closeDataModal();
+}
+
+// [NEW] 全シナリオをMarkdownでダウンロード（シナリオ毎に区切り線）
+function exportMD() {
+    var md = scenarios.map(function(s){ return buildScenarioMD(s); }).join('\n---\n\n');
+    var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    downloadBlob(blob, 'qcard_' + today() + '.md');
+    showToast('全シナリオをMarkdown保存'); closeDataModal();
+}
+
+// [NEW] Markdownテキストをパースしてscenarios形式に変換
+// # シナリオ名 → 新シナリオ開始 / ## タイトル → カード開始 / それ以外 → 本文に追記
+function parseMarkdownToScenarios(text) {
+    var lines = text.split(/\r?\n/);
+    var resultScenarios = [];
+    var curScenario = null;
+    var curCard     = null;
+
+    function pushCard() {
+        if (curCard && (curCard.title.trim() || curCard.content.trim())) {
+            curCard.content = curCard.content.trim();
+            curScenario.data.push(curCard);
+        }
+        curCard = null;
+    }
+    function pushScenario() {
+        pushCard();
+        if (curScenario) resultScenarios.push(curScenario);
+        curScenario = null;
+    }
+
+    lines.forEach(function(line) {
+        var h1 = line.match(/^#\s+(.+)/);
+        var h2 = line.match(/^##\s+(.+)/);
+        if (h1) {
+            pushScenario();
+            curScenario = { id: uid(), name: h1[1].trim(), cols: 4, data: [] };
+        } else if (h2) {
+            if (!curScenario) curScenario = { id: uid(), name: 'インポート', cols: 4, data: [] };
+            pushCard();
+            curCard = { title: h2[1].trim(), content: '' };
+        } else if (curCard) {
+            curCard.content += (curCard.content ? '\n' : '') + line;
+        }
+    });
+    pushScenario();
+    return resultScenarios.filter(function(s){ return s.data.length > 0; });
+}
+
+// [NEW] 貼り付けエリアの内容を自動判定してインポート（JSON優先、失敗時はMarkdownとして解釈）
+function importFromPaste() {
+    var ta = document.getElementById('paste-import-area');
+    var text = ta ? ta.value.trim() : '';
+    if (!text) { showToast('テキストが貼り付けられていません'); return; }
+
+    // ① JSONとして解釈を試みる
+    try {
+        var parsed = JSON.parse(text);
+        if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
+            scenarios = parsed.scenarios;
+            scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
+            activeScenarioId = parsed.activeId || scenarios[0].id;
+            saveScenarios(); renderScenarioTabs();
+            document.getElementById('colsInput').value = getActiveCols();
+            updateGrid();
+            ta.value = '';
+            showToast('JSON（貼り付け）をインポート'); closeDataModal();
+            return;
+        }
+    } catch (e) {
+        // JSONではない → Markdownとして処理
+    }
+
+    // ② Markdownとして解釈
+    var mdScenarios = parseMarkdownToScenarios(text);
+    if (mdScenarios.length === 0) {
+        showToast('読み込めるデータが見つかりませんでした');
+        return;
+    }
+    mdScenarios.forEach(function(s) {
+        if (scenarios.length < 8) scenarios.push(s);
+    });
+    activeScenarioId = mdScenarios[0].id;
+    saveScenarios(); renderScenarioTabs();
+    document.getElementById('colsInput').value = getActiveCols();
+    updateGrid();
+    ta.value = '';
+    showToast('Markdown（貼り付け）をインポート'); closeDataModal();
+}
+
 function importJSON(e) {
     var file = e.target.files[0]; if (!file) return;
     readFile(file, function(text) {
         try {
             var parsed = JSON.parse(text);
-            if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
+            if (!parsed.scenarios || !Array.isArray(parsed.scenarios)) { showToast('JSONの形式が不正です'); return; }
+            parsed.scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
+
+            var bd = document.createElement('div');
+            bd.style.cssText = 'position:fixed;inset:0;background:rgba(4,8,18,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)';
+            bd.innerHTML =
+                '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px 32px;width:360px;max-width:92vw;box-shadow:0 32px 80px rgba(0,0,0,0.8)">' +
+                '<div style="font-family:\'DM Mono\',monospace;font-size:0.62rem;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">インポート</div>' +
+                '<div style="font-size:0.82rem;color:var(--text);font-weight:600;margin-bottom:6px">' + file.name + '</div>' +
+                '<div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:22px">読み込み方法を選択してください。</div>' +
+                '<div style="display:flex;flex-direction:column;gap:8px">' +
+                '<button id="imp-add"     style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:10px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;text-align:left">➕ 追加　<span style="color:var(--text-muted);font-weight:400">既存シナリオを保持して追加</span></button>' +
+                '<button id="imp-replace" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:10px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;text-align:left">🔄 全置換　<span style="color:var(--danger);font-weight:400">既存データを消去して置き換え</span></button>' +
+                '<button id="imp-cancel"  style="background:transparent;border:none;color:var(--text-dim);border-radius:8px;padding:8px 14px;font-size:0.72rem;cursor:pointer;text-align:center">キャンセル</button>' +
+                '</div></div>';
+
+            document.body.appendChild(bd);
+
+            function close() { document.body.removeChild(bd); }
+
+            document.getElementById('imp-cancel').onclick = close;
+
+            document.getElementById('imp-add').onclick = function() {
+                parsed.scenarios.forEach(function(s) {
+                    var ex = scenarios.find(function(x){ return x.name === s.name; });
+                    if (ex) { ex.data = s.data; ex.cols = s.cols; }
+                    else    { scenarios.push(s); }
+                });
+                saveScenarios(); renderScenarioTabs();
+                document.getElementById('colsInput').value = getActiveCols();
+                updateGrid();
+                showToast('追加インポート完了'); close(); closeDataModal();
+            };
+
+            document.getElementById('imp-replace').onclick = function() {
+                if (!confirm('既存のデータをすべて消去して置き換えます。よろしいですか？')) return;
                 scenarios = parsed.scenarios;
-                // cols フィールドがない旧データを移行
-                scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
                 activeScenarioId = parsed.activeId || scenarios[0].id;
                 saveScenarios(); renderScenarioTabs();
                 document.getElementById('colsInput').value = getActiveCols();
                 updateGrid();
-                showToast('JSONをインポート'); closeDataModal();
-            } else { showToast('JSONの形式が不正です'); }
+                showToast('全置換インポート完了'); close(); closeDataModal();
+            };
+
         } catch(err) { showToast('JSON読み込み失敗'); }
     });
     e.target.value = '';
@@ -1891,7 +3524,7 @@ function importCSV(e) {
                 if (existing) {
                     existing.data = map[name];
                     // データ数に合わせて列数を保持（既存の cols はそのまま）
-                } else if (scenarios.length < 8) {
+                } else {    <!-- シナリオ数定義 } else if (scenarios.length < 8) {  -->
                     scenarios.push({ id: uid(), name: name, cols: 4, data: map[name] });
                 }
             });
@@ -2027,8 +3660,31 @@ function toggleEditMode() {
     enterEditMode();
 }
 
+function overlayClearField(field) {
+    if (!editCardItem) return;
+    if (field === 'title') {
+        var t = editCardItem.querySelector('.title-input');
+        var titleEditEl = document.getElementById('overlay-title-edit');
+        if (t) t.value = '';
+        titleEditEl.value = '';
+        overlayTitle.innerText = '';
+        overlayTitle.style.display = 'none';
+        titleEditEl.focus();
+    } else {
+        var c = editCardItem.querySelector('.content-textarea');
+        var contentEditEl = document.getElementById('overlay-edit');
+        if (c) c.value = '';
+        contentEditEl.value = '';
+        overlayText.innerText = '';
+        contentEditEl.focus();
+    }
+    saveCurrentGridDataWithIndicator();
+    if (currentQuery) applySearch(currentQuery);
+}
+
 function enterEditMode() {
     if (!editCardItem) return;
+    overlayFindClose();
     isEditMode = true;
     var titleEditEl   = document.getElementById('overlay-title-edit');
     var contentEditEl = document.getElementById('overlay-edit');
@@ -2064,6 +3720,8 @@ function exitEditMode() {
     if (editTextarea)  editTextarea.oninput   = null;
     overlay.classList.remove('edit-mode');
     if (btn) { btn.classList.remove('active'); btn.title = '編集モード'; }
+    overlayFindClose();
+    overlayText.innerHTML = buildSpeechSentenceHTML(overlayText.innerText);
 }
 
 // ===== SPEECH =====
@@ -2071,6 +3729,65 @@ var speechUtterance = null;
 var speechState     = 'stopped';
 var speechText      = '';
 var speechRate      = 1.0;
+var speechClickLocked = localStorage.getItem('kp_speech_clicklock') !== 'off'; // デフォルトON（誤発話防止）
+
+function applySpeechClickLockUI() {
+    var btn = document.getElementById('speech-clicklock-btn');
+    if (!btn) return;
+    if (speechClickLocked) {
+        btn.classList.add('locked');
+        btn.classList.remove('unlocked');
+        btn.textContent = '🔒';
+        btn.title = '本文クリックでの朗読開始: OFF（クリックで解除）';
+        document.body.classList.add('speech-click-locked');
+    } else {
+        btn.classList.add('unlocked');
+        btn.classList.remove('locked');
+        btn.textContent = '🔓';
+        btn.title = '本文クリックでの朗読開始: ON（クリックでロック）';
+        document.body.classList.remove('speech-click-locked');
+    }
+}
+
+function toggleSpeechClickMode() {
+    speechClickLocked = !speechClickLocked;
+    localStorage.setItem('kp_speech_clicklock', speechClickLocked ? 'on' : 'off');
+    applySpeechClickLockUI();
+    showToast(speechClickLocked ? '本文クリックでの朗読: OFF' : '本文クリックでの朗読: ON');
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// テキストを文単位（。/！/？/改行）に分割し、クリック可能な span でラップしたHTMLを生成
+// findTerm が指定された場合、一致箇所を <mark> でハイライトする
+function buildSpeechSentenceHTML(text, findTerm) {
+    if (!text) return '';
+    var parts = text.split(/(?<=[。！？\n])/);
+    var html = '';
+    parts.forEach(function(part) {
+        if (part === '') return;
+        var inner = escapeHtml(part);
+        if (findTerm) inner = highlightTerm(inner, findTerm);
+        if (part.trim() === '') { html += inner; return; }
+        html += '<span class="speech-sentence" onclick="speechPlayFromClick(this)">' + inner + '</span>';
+    });
+    return html;
+}
+
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// escapeHtml済みのHTML文字列内で、findTerm（プレーンテキスト）に一致する箇所を<mark>でラップ
+function highlightTerm(escapedHtml, findTerm) {
+    if (!findTerm) return escapedHtml;
+    var escTerm = escapeRegExp(escapeHtml(findTerm));
+    if (!escTerm) return escapedHtml;
+    var re = new RegExp(escTerm, 'gi');
+    return escapedHtml.replace(re, function(m) { return '<mark class="overlay-find-hit">' + m + '</mark>'; });
+}
 
 function speechGetElements() {
     return {
@@ -2098,24 +3815,56 @@ function speechUpdateUI() {
     }
 }
 
-function speechPlay() {
-    if (!('speechSynthesis' in window)) { alert('このブラウザはWeb Speech APIに対応していません'); return; }
-    if (speechState === 'paused') { window.speechSynthesis.resume(); speechState = 'playing'; speechUpdateUI(); return; }
+function speechSpeak(text) {
+    if (!text.trim()) return;
     speechStop();
-    var title  = document.getElementById('overlay-title').innerText;
-    var text   = document.getElementById('overlay-text').innerText;
-    speechText = (title ? title + '。' : '') + text;
-    if (!speechText.trim()) return;
+    speechText = text;
     speechUtterance          = new SpeechSynthesisUtterance(speechText);
     speechUtterance.lang     = 'ja-JP';
     speechUtterance.rate     = speechRate;
     speechUtterance.pitch    = 1.0;
     speechUtterance.onstart  = function() { speechState = 'playing';  speechUpdateUI(); };
-    speechUtterance.onend    = function() { speechState = 'stopped';  speechUpdateUI(); };
-    speechUtterance.onerror  = function() { speechState = 'stopped';  speechUpdateUI(); };
+    speechUtterance.onend    = function() {
+        speechState = 'stopped';  speechUpdateUI(); clearSpeechHighlight();
+        // [NEW] 録音モード：読み上げ終了後に自動録音開始
+        if (appMode === 'interview' && editCardItem) { itvStartRecording(); }
+    };
+    speechUtterance.onerror  = function() { speechState = 'stopped';  speechUpdateUI(); clearSpeechHighlight(); };
     speechUtterance.onpause  = function() { speechState = 'paused';   speechUpdateUI(); };
     speechUtterance.onresume = function() { speechState = 'playing';  speechUpdateUI(); };
     window.speechSynthesis.speak(speechUtterance);
+}
+
+function speechPlay() {
+    if (!('speechSynthesis' in window)) { alert('このブラウザはWeb Speech APIに対応していません'); return; }
+    if (speechState === 'paused') { window.speechSynthesis.resume(); speechState = 'playing'; speechUpdateUI(); return; }
+    clearSpeechHighlight();
+    var title  = document.getElementById('overlay-title').innerText;
+    var text   = document.getElementById('overlay-text').innerText;
+    if (appMode === 'interview') {
+    speechSpeak(title);
+} else {
+    speechSpeak((title ? title + '。' : '') + text);
+}
+}
+
+// 文をクリック → その文から朗読開始（クリックロックON時は無効）
+function speechPlayFromClick(el) {
+    if (speechClickLocked) return;
+    if (!('speechSynthesis' in window)) { alert('このブラウザはWeb Speech APIに対応していません'); return; }
+    clearSpeechHighlight();
+    var sentences = Array.from(overlayText.querySelectorAll('.speech-sentence'));
+    var idx = sentences.indexOf(el);
+    if (idx === -1) return;
+    var text = sentences.slice(idx).map(function(s){ return s.innerText; }).join('');
+    el.classList.add('speech-active');
+    speechSpeak(text);
+}
+
+function clearSpeechHighlight() {
+    overlayText.querySelectorAll('.speech-sentence.speech-active').forEach(function(s){
+        s.classList.remove('speech-active');
+    });
 }
 
 function speechPause() {
@@ -2126,6 +3875,7 @@ function speechPause() {
 function speechStop() {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel(); speechState = 'stopped'; speechUpdateUI();
+    clearSpeechHighlight();
 }
 
 function speechUpdateRate() {
@@ -2203,6 +3953,14 @@ function doFlash() {
     timerFlash.classList.add('flash');
     setTimeout(function(){ timerFlash.classList.remove('flash'); }, 1500);
     if (typeof timerSoundOn !== 'undefined' && timerSoundOn) playTimerSound();
+}
+
+function toggleTimerWidget() {
+    var widget = document.getElementById('timer-widget');
+    var btn    = document.getElementById('timerToggleBtn');
+    var visible = widget.style.display !== 'none' && widget.style.display !== '';
+    widget.style.display = visible ? 'none' : 'block';
+    if (btn) btn.classList.toggle('active', !visible);
 }
 
 function toggleTimerMinimize() {
@@ -2301,6 +4059,1294 @@ setTimer(60);
     btn.textContent = (typeof timerSoundOn !== 'undefined' && timerSoundOn) ? '🔔' : '🔕';
     btn.classList.toggle('sound-on', typeof timerSoundOn !== 'undefined' && timerSoundOn);
 })();
+
+// ===== [NEW] INTERVIEW MODE =====
+// IndexedDB wrapper
+var itvDB = (function() {
+    var db = null;
+    var DB_NAME    = 'qcard_interview';
+    var DB_VERSION = 1;
+    var STORE      = 'recordings';
+
+    function open() {
+        return new Promise(function(resolve, reject) {
+            if (db) { resolve(db); return; }
+            var req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = function(e) {
+                var d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE)) {
+                    var store = d.createObjectStore(STORE, { keyPath: 'id' });
+                    store.createIndex('cardId', 'cardId', { unique: false });
+                }
+            };
+            req.onsuccess = function(e) { db = e.target.result; resolve(db); };
+            req.onerror   = function(e) { reject(e); };
+        });
+    }
+
+    function save(record) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).put(record);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function getByCardId(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx    = db.transaction(STORE, 'readonly');
+                var index = tx.objectStore(STORE).index('cardId');
+                var req   = index.getAll(cardId);
+                req.onsuccess = function() { resolve(req.result || []); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function remove(id) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).delete(id);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    return { save: save, getByCardId: getByCardId, remove: remove };
+})();
+
+// 状態変数
+var itvRecording   = false;
+var itvMediaRec    = null;
+var itvChunks      = [];
+var itvCardId      = null;
+var itvTimerRef    = null;
+var itvElapsed     = 0;
+var itvPlayingAudio = null;  // 再生中のAudioオブジェクトopenCard
+
+var itvMicStream = null;
+
+async function itvInitMic() {
+
+    if (
+        itvMicStream &&
+        itvMicStream.active &&
+        itvMicStream.getAudioTracks().length > 0
+    ) {
+        return;
+    }
+
+    itvMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+    });
+}
+
+// カードの一意IDを取得（dataset.itvIdで管理）
+function itvGetCardId(cardItem) {
+    if (!cardItem.dataset.itvId) {
+        cardItem.dataset.itvId = crypto.randomUUID();
+    }
+    return cardItem.dataset.itvId;
+}
+
+// 録音開始
+async function itvStartRecording() {
+
+    if (itvRecording) return;
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        showToast('このブラウザはマイクに対応していません');
+        return;
+    }
+
+    await itvInitMic();
+
+    itvChunks = [];
+
+    itvCardId = editCardItem
+        ? itvGetCardId(editCardItem)
+        : null;
+
+    itvMediaRec = new MediaRecorder(itvMicStream);
+
+itvMediaRec.ondataavailable = function(e) {
+    if (e.data.size > 0) {
+        itvChunks.push(e.data);
+    }
+};
+
+itvMediaRec.onstop = function() {
+
+    var blob = new Blob(itvChunks, {
+        type: 'audio/webm'
+    });
+
+    var record = {
+        id: crypto.randomUUID(),
+        cardId: itvCardId,
+        scenarioId: activeScenarioId,
+        createdAt: new Date().toISOString(),
+        blob: blob
+    };
+
+    itvDB.save(record).then(function() {
+        itvRenderHistory(itvCardId);
+        showToast('💾 録音を保存しました');
+        if (appMode === 'interview') { itvMarkRecordedCards(); }
+    });
+
+    itvRecording = false;
+    itvHideBar();
+};
+
+itvMediaRec.start();
+
+itvRecording = true;
+itvElapsed = 0;
+
+itvShowBar();
+
+itvTimerRef = setInterval(function() {
+
+    itvElapsed++;
+
+    var m = Math.floor(itvElapsed / 60);
+    var s = itvElapsed % 60;
+
+    var el = document.getElementById('itv-elapsed');
+
+    if (el) {
+        el.textContent =
+            m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+ }, 1000);
+}  // ← itvStartRecording を閉じる
+
+// 録音停止
+window.itvStopRecording = function() {
+    if (!itvRecording || !itvMediaRec) return;
+    clearInterval(itvTimerRef);
+    itvMediaRec.stop();
+};
+
+// 録音バー表示/非表示
+function itvShowBar() {
+    var bar = document.getElementById('itv-bar');
+    if (bar) bar.classList.add('active');
+}
+function itvHideBar() {
+    var bar = document.getElementById('itv-bar');
+    if (bar) bar.classList.remove('active');
+    clearInterval(itvTimerRef);
+}
+
+// 履歴レンダリング
+// [NEW] ファイル名生成：シナリオ名_カードタイトル10文字_YYYYMMDD-HHMM.webm
+function itvBuildFilename(rec, titleText) {
+    var active    = getActive();
+    var sceneName = active ? active.name.replace(/[\\/:*?"<>|]/g, '_').slice(0, 10) : 'scenario';
+    var cardTitle = (titleText || 'card').replace(/[\\/:*?"<>|]/g, '_').slice(0, 10) || 'card';
+    var dt  = new Date(rec.createdAt);
+    var ts  = dt.getFullYear() +
+              ('0'+(dt.getMonth()+1)).slice(-2) +
+              ('0'+dt.getDate()).slice(-2) + '-' +
+              ('0'+dt.getHours()).slice(-2) +
+              ('0'+dt.getMinutes()).slice(-2);
+    return sceneName + '_' + cardTitle + '_' + ts + '.webm';
+}
+
+// [NEW] 個別録音DL
+window.itvDownloadRec = function(recId, e) {
+    if (e) e.stopPropagation();
+    var rec = window.itvRecCache && window.itvRecCache[recId];
+    if (!rec) return;
+    var titleText = editCardItem ? (editCardItem.querySelector('.title-input') || {}).value || '' : '';
+    var filename  = itvBuildFilename(rec, titleText);
+    var url = URL.createObjectURL(rec.blob);
+    var a   = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    showToast('⬇ ' + filename);
+};
+
+// [NEW] このシナリオの録音件数取得
+function itvCountActiveScenarioRecs() {
+    var items  = Array.from(document.querySelectorAll('.grid-item'));
+    var cardIds = items.map(function(el){ return el.dataset.itvId; }).filter(Boolean);
+    if (cardIds.length === 0) return Promise.resolve(0);
+    return Promise.all(cardIds.map(function(id){ return itvDB.getByCardId(id); }))
+        .then(function(results){ return results.reduce(function(s,r){ return s + r.length; }, 0); });
+}
+
+// [NEW] このシナリオの録音を全DL
+window.itvDownloadActiveScenario = function() {
+    var active = getActive();
+    if (!active) { showToast('シナリオが見つかりません'); return; }
+    var items  = Array.from(document.querySelectorAll('.grid-item'));
+    var pairs  = items.map(function(el) {
+        var ti = el.querySelector('.title-input');
+        return { cardId: el.dataset.itvId, title: ti ? ti.value : '' };
+    }).filter(function(p){ return p.cardId; });
+
+    if (pairs.length === 0) { showToast('録音データがありません'); return; }
+
+    Promise.all(pairs.map(function(p) {
+        return itvDB.getByCardId(p.cardId).then(function(recs) {
+            return recs.map(function(rec){ return { rec: rec, title: p.title }; });
+        });
+    })).then(function(nested) {
+        var all = nested.reduce(function(a,b){ return a.concat(b); }, []);
+        if (all.length === 0) { showToast('録音データがありません'); closeDataModal(); return; }
+        all.sort(function(a,b){ return a.rec.createdAt.localeCompare(b.rec.createdAt); });
+        all.forEach(function(item, i) {
+            setTimeout(function() {
+                var filename = itvBuildFilename(item.rec, item.title);
+                var url = URL.createObjectURL(item.rec.blob);
+                var a   = document.createElement('a');
+                a.href = url; a.download = filename; a.click();
+                setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+            }, i * 400);
+        });
+        showToast('⬇ ' + all.length + '件をダウンロード中...');
+        closeDataModal();
+    });
+};
+
+function itvRenderHistory(cardId) {
+    if (!cardId) { itvHideHistory(); return; }
+    itvDB.getByCardId(cardId).then(function(records) {
+        var hist = document.getElementById('itv-history');
+        var list = document.getElementById('itv-history-list');
+        if (!hist || !list) return;
+        if (!records || records.length === 0) { itvHideHistory(); return; }
+        // recをキャッシュ（blobはDOM属性に入れられないため）
+        if (!window.itvRecCache) window.itvRecCache = {};
+        list.innerHTML = '';
+        records.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); }).forEach(function(rec) {
+            window.itvRecCache[rec.id] = rec;
+            var dt    = new Date(rec.createdAt);
+            var label = dt.getFullYear() + '/' +
+                        ('0'+(dt.getMonth()+1)).slice(-2) + '/' +
+                        ('0'+dt.getDate()).slice(-2) + ' ' +
+                        ('0'+dt.getHours()).slice(-2) + ':' +
+                        ('0'+dt.getMinutes()).slice(-2);
+            var item = document.createElement('div');
+            item.className     = 'itv-rec-item';
+            item.dataset.recId = rec.id;
+            item.innerHTML =
+                '<span class="itv-rec-play">▶</span>' +
+                '<span class="itv-rec-date">' + label + '</span>' +
+                // [NEW] 個別DLボタン追加
+                '<button class="itv-rec-dl"  title="ダウンロード" onclick="itvDownloadRec(\'' + rec.id + '\',event)">⬇</button>' +
+                '<button class="itv-rec-del" title="削除"         onclick="itvDeleteRec(\'' + rec.id + '\',\'' + cardId + '\',event)">✕</button>';
+            item.addEventListener('click', function(e) {
+                if (e.target.classList.contains('itv-rec-del')) return;
+                if (e.target.classList.contains('itv-rec-dl'))  return;
+                itvPlayRec(rec, item);
+            });
+            list.appendChild(item);
+        });
+        hist.classList.add('has-items');
+    });
+}
+
+function itvHideHistory() {
+    var hist = document.getElementById('itv-history');
+    if (hist) hist.classList.remove('has-items');
+}
+
+// 録音再生
+function itvPlayRec(rec, itemEl) {
+    if (itvPlayingAudio) { itvPlayingAudio.pause(); itvPlayingAudio = null; }
+    document.querySelectorAll('.itv-rec-item.playing').forEach(function(el){ el.classList.remove('playing'); });
+    var url   = URL.createObjectURL(rec.blob);
+    var audio = new Audio(url);
+    itvPlayingAudio = audio;
+    itemEl.classList.add('playing');
+    audio.play();
+    audio.onended = function() {
+        itemEl.classList.remove('playing');
+        URL.revokeObjectURL(url);
+        itvPlayingAudio = null;
+    };
+}
+
+// 録音済みカードにドットマークを付与（インタビューモード時）
+function itvMarkRecordedCards() {
+    var items = Array.from(document.querySelectorAll('.grid-item'));
+    items.forEach(function(el) {
+        var cardId = el.dataset.itvId;
+        if (!cardId) { el.classList.remove('itv-has-rec'); return; }
+        itvDB.getByCardId(cardId).then(function(recs) {
+            if (recs && recs.length > 0) {
+                el.classList.add('itv-has-rec');
+            } else {
+                el.classList.remove('itv-has-rec');
+            }
+        });
+    });
+}
+
+function itvClearRecMarks() {
+    document.querySelectorAll('.grid-item.itv-has-rec').forEach(function(el) {
+        el.classList.remove('itv-has-rec');
+    });
+}
+
+// ===== 読み上げ速度（カード単体・連続朗読で共通／永続化） =====
+var rdRate = parseFloat(localStorage.getItem('rd_rate')) || 1.0;
+function rdSaveRate(v) {
+    rdRate = v;
+    localStorage.setItem('rd_rate', String(v));
+}
+
+// ===== MOBILE SWIPE =====
+(function() {
+    var isMobile = function() { return window.innerWidth <= 640; };
+    var mIdx = 0;
+    var mData = [];
+    var mCard    = document.getElementById('mobile-card');
+    var mTitle   = document.getElementById('mobile-card-title');
+    var mContent = document.getElementById('mobile-card-content');
+    var mCounter = document.getElementById('mobile-counter');
+    var mWrap    = document.getElementById('mobile-swipe-wrap');
+    var mobSpeaking = false;
+
+    function mSync() {
+        if (!isMobile()) return;
+        var active = getActive();
+        var allData = active ? active.data : [];
+        var isEditMode = (typeof appMode !== 'undefined' && appMode === 'edit');
+        // 編集モードでは空カードも含めて全件を対象にする（新規入力・編集のため）
+        mData = isEditMode ? allData.slice() : allData.filter(function(d) {
+            return (d.title && d.title.trim()) || (d.content && d.content.trim());
+        });
+        if (mIdx >= mData.length) mIdx = Math.max(0, mData.length - 1);
+
+        // グリッドモード時はスワイプUIを非表示
+        if (document.body.classList.contains('mob-grid')) {
+            mWrap.style.display = 'none';
+            return;
+        }
+        mRender();
+        mWrap.style.display = mData.length ? 'flex' : 'none';
+        mWrap.style.flexDirection = 'column';
+    }
+
+    // 外部からインデックス指定でスワイプUIを開く
+    window.mSetIdx = function(idx) {
+        mIdx = idx;
+        mSync();
+    };
+    window.mSync = mSync;
+
+    function mRender() {
+        var d = mData[mIdx] || { title: '', content: '' };
+        mTitle.textContent   = d.title   || '';
+        mContent.textContent = d.content || '';
+        mCounter.textContent = (mData.length ? mIdx + 1 : 0) + ' / ' + mData.length;
+        // 朗読モード中は単体読み上げを止めない（連続朗読を妨げないため）
+        if (typeof appMode === 'undefined' || appMode !== 'reading') {
+            mobSpeakStop();
+        }
+
+        // 編集モード：タイトル・本文を編集可能にし、grid-item側と同期
+        var isEdit = (typeof appMode !== 'undefined' && appMode === 'edit');
+        mTitle.contentEditable   = isEdit ? 'true' : 'false';
+        mContent.contentEditable = isEdit ? 'true' : 'false';
+        mTitle.classList.toggle('mob-editable', isEdit);
+        mContent.classList.toggle('mob-editable', isEdit);
+
+        // 朗読モード：文節分割レンダリング
+        var sentEl = document.getElementById('mobile-card-sentences');
+        if (sentEl) {
+            sentEl.innerHTML = '';
+            var fullText = (d.title ? d.title + '。' : '') + (d.content || '');
+            // 句読点・改行・感嘆符で分割
+            var parts = fullText.split(/([。、！？\n]+)/);
+            var sentences = [];
+            for (var i = 0; i < parts.length; i += 2) {
+                var txt = parts[i] + (parts[i+1] || '');
+                if (txt.trim()) sentences.push(txt);
+            }
+            if (!sentences.length && fullText.trim()) sentences = [fullText];
+            sentences.forEach(function(s, si) {
+                var span = document.createElement('span');
+                span.className = 'mob-sentence';
+                span.textContent = s;
+                span.dataset.idx = si;
+                span.addEventListener('click', function() {
+                    // タップした文節から「再生ボタンを押したのと同じ状態」で朗読開始
+                    var fromIdx = parseInt(this.dataset.idx, 10);
+                    if (window._mobCurrentEl) {
+                        window.rdStartFrom(window._mobCurrentEl, fromIdx);
+                    }
+                });
+                sentEl.appendChild(span);
+            });
+            // 現在再生中の文節ハイライトを保持
+            window._mobSentences = sentences;
+        }
+
+        // 現在表示中のgrid-itemを記憶（編集モードでは全カード、それ以外は非空カードのみ）
+        var isEditModeNow = (typeof appMode !== 'undefined' && appMode === 'edit');
+        var cards = isEditModeNow
+            ? Array.from(grid.querySelectorAll('.grid-item'))
+            : Array.from(grid.querySelectorAll('.grid-item')).filter(function(el) {
+                var t = el.querySelector('.title-input');
+                var c = el.querySelector('.content-textarea');
+                return (t && t.value.trim()) || (c && c.value.trim());
+            });
+        window._mobCurrentEl = cards[mIdx] || null;
+        // 注意：ここではspeechSynthesis.cancel()を呼ばない。
+        // カードの閲覧・スワイプは連続朗読の進行を妨げない設計とする。
+
+        // 文節spanを再生成した直後、表示カードと朗読中カードの一致状況に応じてハイライトを再評価
+        if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+    }
+
+    // 文節ハイライトはrdHighlightSentence（グローバル）が担当
+
+    function mAnimate(dir, cb) {
+        mCard.classList.add(dir === 1 ? 'slide-left' : 'slide-right');
+        setTimeout(function() {
+            cb();
+            mCard.classList.remove('slide-left', 'slide-right');
+            mCard.style.transition = 'none';
+            void mCard.offsetWidth;
+            mCard.style.transition = '';
+            mRender();
+        }, 180);
+    }
+
+    function mNext() { if (mIdx >= mData.length - 1) return; mAnimate(1, function() { mIdx++; }); }
+    function mPrev() { if (mIdx <= 0) return; mAnimate(-1, function() { mIdx--; }); }
+
+    document.getElementById('mob-next').addEventListener('click', mNext);
+    document.getElementById('mob-prev').addEventListener('click', mPrev);
+
+    // 編集モード：mTitle/mContentへの入力をgrid-item実体へ反映
+    function mSyncToGridItem(field, value) {
+        var el = window._mobCurrentEl;
+        if (!el) return;
+        var input = field === 'title'
+            ? el.querySelector('.title-input')
+            : el.querySelector('.content-textarea');
+        if (!input) return;
+        input.value = value;
+        // grid-item側のinputイベントを発火させ、既存の保存・自動保存ロジックに乗せる
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        // mDataも更新（カウンタ・前後カードの表示に必要）
+        if (mData[mIdx]) mData[mIdx][field] = value;
+    }
+
+    mTitle.addEventListener('input', function() {
+        if (mTitle.contentEditable !== 'true') return;
+        mSyncToGridItem('title', mTitle.textContent);
+    });
+    mContent.addEventListener('input', function() {
+        if (mContent.contentEditable !== 'true') return;
+        mSyncToGridItem('content', mContent.textContent);
+    });
+    // Enterキーで改行のみ許可（タイトルは1行想定だが本文は複数行OKなのでデフォルト動作のまま）
+    mTitle.addEventListener('keydown', function(e) {
+        if (mTitle.contentEditable === 'true' && e.key === 'Enter') {
+            e.preventDefault();
+            mContent.focus();
+        }
+    });
+
+    // スワイプ
+    var touchStartX = 0, touchStartY = 0;
+    mWrap.addEventListener('touchstart', function(e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    mWrap.addEventListener('touchend', function(e) {
+        var dx = e.changedTouches[0].clientX - touchStartX;
+        var dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+            if (dx < 0) mNext(); else mPrev();
+        }
+    }, { passive: true });
+
+    // モバイル音声
+    function mobSpeakStop() {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        mobSpeaking = false;
+        var btn = document.getElementById('mob-speech-btn');
+        if (btn) { btn.textContent = '▶ 読み上げ'; btn.classList.remove('speaking'); }
+    }
+
+    window.mobSpeechToggle = function() {
+        if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+        if (mobSpeaking) { mobSpeakStop(); return; }
+        var d = mData[mIdx];
+        if (!d) return;
+        var text = (d.title ? d.title + '。' : '') + (d.content || '');
+        if (!text.trim()) return;
+        var utt = new SpeechSynthesisUtterance(text);
+        utt.lang  = 'ja-JP';
+        utt.rate  = rdRate;
+        utt.onstart = function() {
+            mobSpeaking = true;
+            var btn = document.getElementById('mob-speech-btn');
+            if (btn) { btn.textContent = '⏹ 停止'; btn.classList.add('speaking'); }
+        };
+        utt.onend = utt.onerror = function() { mobSpeakStop(); };
+        window.speechSynthesis.speak(utt);
+    };
+
+    window.mobSpeechRateChange = function(v) { rdSaveRate(parseFloat(v)); rdSyncRateUI(); };
+
+    // PCとモバイルの表示切替
+    function mRefresh() {
+        if (isMobile()) { mSync(); } else { mWrap.style.display = 'none'; mobSpeakStop(); }
+    }
+
+    var gridEl = document.getElementById('grid');
+    var mo = new MutationObserver(function() { if (isMobile()) mSync(); });
+    mo.observe(gridEl, { childList: true });
+
+    window.addEventListener('resize', mRefresh);
+    document.addEventListener('scenarioChanged', mRefresh);
+    window.addEventListener('load', function() { setTimeout(mRefresh, 300); });
+})();
+
+// ===== READING MODE =====
+var rdItems    = [];
+var rdIdx      = 0;
+var rdRunning  = false;
+var rdPaused   = false;
+var rdReadTitle = (localStorage.getItem('rd_read_title') !== '0'); // デフォルトtrue
+var rdSentences  = [];  // 現在カードの文節配列
+var rdSentIdx    = 0;   // 現在カード内での文節インデックス（一時停止再開用）
+
+function rdGetCards() {
+    return Array.from(grid.querySelectorAll('.grid-item')).filter(function(el) {
+        var t = el.querySelector('.title-input');
+        var c = el.querySelector('.content-textarea');
+        return (t && t.value.trim()) || (c && c.value.trim());
+    });
+}
+
+// テキストを文節（句読点・改行区切り）に分割
+function rdSplitSentences(text) {
+    var parts = text.split(/([。、！？\n]+)/);
+    var sentences = [];
+    for (var i = 0; i < parts.length; i += 2) {
+        var txt = parts[i] + (parts[i+1] || '');
+        if (txt.trim()) sentences.push(txt);
+    }
+    if (!sentences.length && text.trim()) sentences = [text];
+    return sentences;
+}
+
+window.rdTitleToggleChange = function(checked) {
+    rdReadTitle = checked;
+    localStorage.setItem('rd_read_title', checked ? '1' : '0');
+};
+
+function rdUpdateUI() {
+    var playBtn  = document.getElementById('rd-play-btn');
+    var pauseBtn = document.getElementById('rd-pause-btn');
+    var stopBtn  = document.getElementById('rd-stop-btn');
+    var info     = document.getElementById('rd-info');
+    var hint     = document.getElementById('rd-hint');
+    if (!playBtn) return;
+    var isMob = window.innerWidth <= 640;
+    if (rdRunning && !rdPaused) {
+        // 再生中
+        var d = rdItems[rdIdx];
+        playBtn.textContent  = '▶ 再生';
+        playBtn.disabled     = true;
+        pauseBtn.disabled    = false;
+        stopBtn.disabled     = false;
+        playBtn.classList.add('active');
+        info.textContent = (rdIdx + 1) + ' / ' + rdItems.length + (d ? '　' + (d.title || '').slice(0, 16) : '');
+        if (hint) hint.style.display = 'none';
+    } else if (rdRunning && rdPaused) {
+        // 一時停止中
+        var d2 = rdItems[rdIdx];
+        playBtn.textContent  = '▶ 再開';
+        playBtn.disabled     = false;
+        pauseBtn.disabled    = true;
+        stopBtn.disabled     = false;
+        playBtn.classList.remove('active');
+        info.textContent = '一時停止中　' + (rdIdx + 1) + ' / ' + rdItems.length + (d2 ? '　' + (d2.title || '').slice(0, 14) : '');
+        if (hint) hint.style.display = 'none';
+    } else {
+        // 未開始・停止済み
+        playBtn.textContent  = '▶ 再生';
+        playBtn.disabled     = false;
+        pauseBtn.disabled    = true;
+        stopBtn.disabled     = true;
+        playBtn.classList.remove('active');
+        info.textContent = isMob ? '表示中のカードから再生' : (rdItems.length ? rdItems.length + ' 枚' : 'カードをクリックして開始');
+        if (hint) hint.style.display = isMob ? 'none' : '';
+    }
+}
+
+function rdHighlight(idx) {
+    grid.querySelectorAll('.grid-item.reading-active').forEach(function(el){ el.classList.remove('reading-active'); });
+    if (rdItems[idx]) {
+        rdItems[idx].el.classList.add('reading-active');
+        rdItems[idx].el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    // スマホのスワイプ表示を朗読中のカードに自動追従させる
+    if (window.innerWidth <= 640 && typeof window.mSetIdx === 'function') {
+        if (window._mobIdx !== idx) {
+            window._mobIdx = idx;
+            window.mSetIdx(idx);
+        }
+    } else if (rdItems[idx]) {
+        // PC：停止後に再生した時、進行中だったカードへ戻れるよう記憶を更新
+        window._mobCurrentEl = rdItems[idx].el;
+    }
+    // [NEW] PC：オーバーレイが開いている場合、朗読中のカードに合わせて表示内容も自動切替する
+    if (window.innerWidth > 640 && rdItems[idx] && overlay && overlay.style.display !== 'none') {
+        var newItem = rdItems[idx].el;
+        if (editCardItem !== newItem) {
+            var t = newItem.querySelector('.title-input');
+            var c = newItem.querySelector('.content-textarea');
+            isLocked = true;
+            showOverlay(t ? t.value : '', c ? c.value : '', newItem);
+        }
+    }
+}
+
+// モバイル文節UIのハイライトをrdSentIdxに同期
+// 重要：現在「表示されているカード」が「朗読中のカード」と一致する場合のみハイライトする
+function rdHighlightMobSentence() {
+    var sentEl = document.getElementById('mobile-card-sentences');
+    if (sentEl) {
+        var isMatchingCard = rdItems[rdIdx] && window._mobCurrentEl === rdItems[rdIdx].el;
+        sentEl.querySelectorAll('.mob-sentence').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+        if (isMatchingCard) {
+            var target = sentEl.querySelector('.mob-sentence[data-idx="' + rdSentIdx + '"]');
+            if (target) target.classList.add('mob-sentence-active');
+        }
+    }
+    // [NEW] PC：オーバーレイが開いている場合、その中の文節（.speech-sentence）もハイライト
+    if (overlay && overlay.style.display !== 'none' && editCardItem && rdItems[rdIdx] && editCardItem === rdItems[rdIdx].el) {
+        var ovSentences = overlayText.querySelectorAll('.speech-sentence');
+        ovSentences.forEach(function(s){ s.classList.remove('speech-active'); });
+        var d = rdItems[rdIdx];
+        var titleOffset = (rdReadTitle && d && d.title) ? 1 : 0;
+        var ovIdx = rdSentIdx - titleOffset;
+        if (ovIdx >= 0 && ovSentences[ovIdx]) {
+            ovSentences[ovIdx].classList.add('speech-active');
+            ovSentences[ovIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+}
+
+// カード内の指定文節インデックスから読み上げ（文単位で一時停止再開を実現）
+function rdSpeakFromSentence(startSentIdx) {
+    if (!rdRunning || rdPaused) return;
+    var d = rdItems[rdIdx];
+    if (!d) { rdStop(); showToast('✅ 朗読が完了しました'); return; }
+
+    rdHighlight(rdIdx);
+    rdUpdateUI();
+
+    // カードが変わった場合は文節を再分割
+    var fullText = (rdReadTitle && d.title ? d.title + '。' : '') + (d.content || '');
+    if (rdSentences.length === 0 || rdSentIdx === 0) {
+        rdSentences = rdSplitSentences(fullText);
+    }
+    if (startSentIdx !== undefined) rdSentIdx = startSentIdx;
+
+    var remaining = rdSentences.slice(rdSentIdx).join('');
+    if (!remaining.trim()) {
+        // このカードは読み終わり：次のカードへ
+        rdIdx++;
+        rdSentences = [];
+        rdSentIdx = 0;
+        rdSpeakFromSentence(0);
+        return;
+    }
+
+    // このutterance開始時点でのrdSentIdxを固定（onboundary内で参照がズレないように）
+    var baseSentIdx = rdSentIdx;
+    var firstBoundaryFired = false;
+
+    // 読み上げ開始時点で即座に確定・ハイライト（onboundaryの発火を待たない）
+    rdSentIdx = baseSentIdx;
+    if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+
+    var utt = new SpeechSynthesisUtterance(remaining);
+    utt.lang  = 'ja-JP';
+    utt.rate  = rdRate;
+
+    // boundary イベントで「今読んでいる文節」を追跡（対応ブラウザのみ）
+    utt.onboundary = function(e) {
+        if (e.charIndex === undefined) return;
+        // 最初のboundaryイベントは文節の先頭（charIndex≒0）を指すはずなので、
+        // タップ/クリックで指定した開始文節(baseSentIdx)を上書きしない
+        if (!firstBoundaryFired) {
+            firstBoundaryFired = true;
+            if (e.charIndex < (rdSentences[baseSentIdx] || '').length) {
+                rdSentIdx = baseSentIdx;
+                if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+                return;
+            }
+        }
+        // remaining内の絶対文字位置から、rdSentences内のインデックスを毎回baseSentIdxから再計算する
+        var charCount = 0;
+        for (var i = baseSentIdx; i < rdSentences.length; i++) {
+            charCount += rdSentences[i].length;
+            if (e.charIndex < charCount) {
+                rdSentIdx = i;
+                break;
+            }
+        }
+        if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+    };
+
+    utt.onend = function() {
+        if (!rdRunning || rdPaused) return;
+        rdIdx++;
+        rdSentences = [];
+        rdSentIdx = 0;
+        rdSpeakFromSentence(0);
+    };
+    utt.onerror = function(e) {
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        if (rdRunning) rdStop();
+    };
+    window.speechSynthesis.speak(utt);
+}
+
+// 後方互換のためのエイリアス
+function rdSpeakCurrent() {
+    rdSpeakFromSentence(rdSentIdx || 0);
+}
+
+function rdBuildItems(fromEl) {
+    var cards = rdGetCards();
+    rdItems = cards.map(function(el) {
+        return {
+            el:      el,
+            title:   el.querySelector('.title-input').value,
+            content: el.querySelector('.content-textarea').value
+        };
+    });
+    rdIdx = 0;
+    if (fromEl) {
+        var fi = rdItems.findIndex(function(c){ return c.el === fromEl; });
+        if (fi >= 0) rdIdx = fi;
+    }
+    rdSentences = [];
+    rdSentIdx = 0;
+}
+
+window.rdStartFrom = function(fromEl, fromSentIdx) {
+    if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+    window.speechSynthesis.cancel();
+    rdBuildItems(fromEl);
+    if (!rdItems.length) { showToast('再生できるカードがありません'); return; }
+    // 最後に開始したカードを記憶（PC・スマホ共通）：停止後の再生時に同じカードへ戻る
+    if (rdItems[rdIdx]) window._mobCurrentEl = rdItems[rdIdx].el;
+    rdRunning = true;
+    rdPaused  = false;
+    rdUpdateUI();
+    var startIdx = fromSentIdx || 0;
+    setTimeout(function(){ rdSpeakFromSentence(startIdx); }, 80);
+};
+
+// rdPlay: 一時停止中は「止めた文の頭」から再開（先頭カードに戻らない）
+window.rdPlay = function() {
+    if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
+    if (rdPaused && rdItems.length) {
+        // 一時停止からの再開：止めた文節（rdSentIdx）から継続
+        rdPaused  = false;
+        rdRunning = true;
+        window.speechSynthesis.cancel();
+        rdUpdateUI();
+        setTimeout(function(){ rdSpeakFromSentence(rdSentIdx); }, 80);
+    } else if (!rdRunning) {
+        // 未開始：現在表示カードから開始（スマホはmIdx、PCは先頭）
+        var startEl = null;
+        if (window._mobCurrentEl) {
+            startEl = window._mobCurrentEl;
+        }
+        window.rdStartFrom(startEl);
+    }
+};
+
+window.rdPause = function() {
+    if (!rdRunning || rdPaused) return;
+    rdPaused = true;
+    window.speechSynthesis.cancel();
+    // rdSentIdxはonboundaryで更新済みの値を保持。今読んでいた文の頭から再開できる。
+    rdUpdateUI();
+};
+
+window.rdStop = function() {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    rdRunning   = false;
+    rdPaused    = false;
+    rdIdx       = 0;
+    rdSentences = [];
+    rdSentIdx   = 0;
+    // 注意：window._mobCurrentElはクリアしない。
+    // 停止後に再生を押した時、表示中のカードの頭から再開できるようにするため。
+    window._mobIdx = undefined;
+    grid.querySelectorAll('.grid-item.reading-active').forEach(function(el){ el.classList.remove('reading-active'); });
+    document.querySelectorAll('.mob-sentence.mob-sentence-active').forEach(function(s){ s.classList.remove('mob-sentence-active'); });
+    // [NEW] PCオーバーレイの文節ハイライトもクリア
+    document.querySelectorAll('.speech-sentence.speech-active').forEach(function(s){ s.classList.remove('speech-active'); });
+    rdUpdateUI();
+};
+
+window.rdRateChange = function(v) { rdSaveRate(parseFloat(v)); rdSyncRateUI(); };
+
+window.rdSetRate = function(btn) {
+    rdSaveRate(parseFloat(btn.dataset.rate));
+    rdSyncRateUI();
+    var pop = document.getElementById('rd-rate-popover');
+    if (pop) pop.classList.remove('open');
+    // 朗読中なら現カードを再生し直し（速度即反映）
+    if (rdRunning && !rdPaused) {
+        window.speechSynthesis.cancel();
+        setTimeout(function(){ rdSpeakCurrent(); }, 80);
+    }
+};
+
+// 速度ポップオーバーの開閉
+window.rdToggleRatePopover = function(e) {
+    e.stopPropagation();
+    var pop = document.getElementById('rd-rate-popover');
+    var trigger = document.getElementById('rd-rate-trigger');
+    var willOpen = !pop.classList.contains('open');
+    pop.classList.toggle('open', willOpen);
+    if (willOpen && trigger) {
+        // 画面内に収まるようfixed位置を計算（はみ出し防止）
+        var tr = trigger.getBoundingClientRect();
+        pop.style.position = 'fixed';
+        var popWidth = 168;
+        var left = tr.right - popWidth;
+        if (left < 8) left = 8;
+        if (left + popWidth > window.innerWidth - 8) left = window.innerWidth - popWidth - 8;
+        pop.style.left   = left + 'px';
+        pop.style.right  = 'auto';
+        pop.style.bottom = (window.innerHeight - tr.top + 6) + 'px';
+    }
+};
+document.addEventListener('click', function(e) {
+    var pop = document.getElementById('rd-rate-popover');
+    var trigger = document.getElementById('rd-rate-trigger');
+    if (!pop || !pop.classList.contains('open')) return;
+    if (e.target === trigger || trigger.contains(e.target)) return;
+    if (!pop.contains(e.target)) pop.classList.remove('open');
+});
+window.addEventListener('resize', function() {
+    var pop = document.getElementById('rd-rate-popover');
+    if (pop) pop.classList.remove('open');
+});
+
+// 速度UIを全箇所（READING BAR・モバイル単体読み上げ）で同期
+function rdSyncRateUI() {
+    document.querySelectorAll('.rd-rate-btn').forEach(function(b){
+        b.classList.toggle('selected', parseFloat(b.dataset.rate) === rdRate);
+    });
+    var mobSel = document.getElementById('mob-speech-rate');
+    if (mobSel) mobSel.value = String(rdRate);
+    var trigger = document.getElementById('rd-rate-current');
+    if (trigger) trigger.textContent = rdRate.toFixed(1) + 'x';
+}
+
+// 初期状態の復元
+window.addEventListener('load', function() {
+    rdSyncRateUI();
+    var titleCheckbox = document.getElementById('rd-title-toggle');
+    if (titleCheckbox) titleCheckbox.checked = rdReadTitle;
+});
+
+// 朗読モード中にカードをクリック → そこから開始
+grid.addEventListener('click', function(e) {
+    if (appMode !== 'reading') return;
+    var item = e.target.closest('.grid-item');
+    if (!item) return;
+    var t = item.querySelector('.title-input');
+    var c = item.querySelector('.content-textarea');
+    if ((!t || !t.value.trim()) && (!c || !c.value.trim())) return;
+    window.rdStartFrom(item);
+});
+
+// グリッド更新時にUIを再評価
+(function() {
+    var mo = new MutationObserver(function() {
+        if (appMode === 'reading' && !rdRunning) {
+            rdBuildItems(null);
+            rdUpdateUI();
+        }
+    });
+    mo.observe(grid, { childList: true });
+})();
+
+// 録音削除
+window.itvDeleteRec = function(id, cardId, e) {
+    e.stopPropagation();
+    itvDB.remove(id).then(function() {
+        itvRenderHistory(cardId);
+        showToast('録音を削除しました');
+        // 削除後にドットを再評価
+        if (appMode === 'interview') { itvMarkRecordedCards(); }
+    });
+};
+
+// [WHISPER拡張ポイント]
+// itvStopRecording() の blob 取得後に以下を呼び出す形で拡張可能:
+// async function itvTranscribeWithWhisper(blob) {
+
+// ===== MOBILE VIEW MODE =====
+var mobView = localStorage.getItem('mob_view') || 'swipe';
+
+function mobSyncTitleLabels() {
+    grid.querySelectorAll('.grid-item').forEach(function(item, i) {
+        var input = item.querySelector('.title-input');
+        if (!input) return;
+        var label = item.querySelector('.mob-title-label');
+        if (!label) {
+            label = document.createElement('div');
+            label.className = 'mob-title-label';
+            item.appendChild(label);
+        }
+        // 番号span
+        var numSpan = label.querySelector('.mob-num-label');
+        if (!numSpan) {
+            numSpan = document.createElement('span');
+            numSpan.className = 'mob-num-label';
+            label.appendChild(numSpan);
+        }
+        numSpan.textContent = '#' + (i + 1);
+        // タイトルspan
+        var txtSpan = label.querySelector('.mob-title-text');
+        if (!txtSpan) {
+            txtSpan = document.createElement('span');
+            txtSpan.className = 'mob-title-text';
+            label.appendChild(txtSpan);
+        }
+        txtSpan.textContent = input.value || '';
+        if (!input._mobLabelBound) {
+            input._mobLabelBound = true;
+            input.addEventListener('input', function() {
+                txtSpan.textContent = input.value;
+            });
+        }
+    });
+}
+
+function mobSetView(v) {
+    mobView = v;
+    localStorage.setItem('mob_view', v);
+    document.body.classList.remove('mob-grid', 'mob-grid1', 'mob-grid2');
+    document.querySelectorAll('.mob-view-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.view === v);
+    });
+    if (v === 'grid1') {
+        document.body.classList.add('mob-grid', 'mob-grid1');
+        mobSyncTitleLabels();
+    } else if (v === 'grid2') {
+        document.body.classList.add('mob-grid', 'mob-grid2');
+        mobSyncTitleLabels();
+    }
+    if (typeof mSync === 'function') mSync();
+}
+
+// グリッドモードでカードをタップ → スワイプUIに切替してそのカードを表示
+grid.addEventListener('click', function(e) {
+    if (!document.body.classList.contains('mob-grid')) return;
+    if (appMode !== 'view' && appMode !== 'reading') return;
+    var item = e.target.closest('.grid-item');
+    if (!item) return;
+    var items = Array.from(grid.querySelectorAll('.grid-item')).filter(function(el){
+        var t = el.querySelector('.title-input');
+        var c = el.querySelector('.content-textarea');
+        return (t && t.value.trim()) || (c && c.value.trim());
+    });
+    var idx = items.indexOf(item);
+    if (idx < 0) return;
+    mobSetView('swipe');
+    setTimeout(function() {
+        if (typeof mSetIdx === 'function') mSetIdx(idx);
+    }, 50);
+}, true);
+
+window.addEventListener('load', function() {
+    // 初期状態を復元
+    var btn = document.querySelector('.mob-view-btn[data-view="' + mobView + '"]');
+    if (btn) mobSetView(mobView);
+});
+
+window.mSetIdx = null; // mSync後に外部から設定
+function mobDrawerOpen() {
+    // ドロワー内の値をPC側と同期
+    var r = document.getElementById('rowsInput');
+    var c = document.getElementById('colsInput');
+    var f = document.getElementById('fontSizeSlider');
+    if (r) document.getElementById('rowsInputMob').value = r.value;
+    if (c) document.getElementById('colsInputMob').value = c.value;
+    if (f) {
+        document.getElementById('fontSizeSliderMob').value = f.value;
+        document.getElementById('fontSizeValMob').textContent = f.value + 'px';
+    }
+    // テーマアイコン同期
+    var icon = document.getElementById('themeIcon');
+    if (icon) document.getElementById('mobThemeIcon').textContent = icon.textContent;
+
+    document.getElementById('mob-drawer').classList.add('open');
+    document.getElementById('mob-drawer-overlay').classList.add('open');
+}
+
+function mobDrawerClose() {
+    document.getElementById('mob-drawer').classList.remove('open');
+    document.getElementById('mob-drawer-overlay').classList.remove('open');
+}
+
+// ドロワー内スライダー → PC側に反映
+(function() {
+    window.addEventListener('load', function() {
+        var fsMob = document.getElementById('fontSizeSliderMob');
+        if (fsMob) {
+            fsMob.addEventListener('input', function() {
+                document.getElementById('fontSizeValMob').textContent = this.value + 'px';
+                var fs = document.getElementById('fontSizeSlider');
+                if (fs) { fs.value = this.value; fs.dispatchEvent(new Event('input')); }
+            });
+        }
+        var rMob = document.getElementById('rowsInputMob');
+        if (rMob) {
+            rMob.addEventListener('change', function() {
+                var r = document.getElementById('rowsInput');
+                if (r) { r.value = this.value; r.dispatchEvent(new Event('change')); }
+            });
+        }
+        var cMob = document.getElementById('colsInputMob');
+        if (cMob) {
+            cMob.addEventListener('change', function() {
+                var c = document.getElementById('colsInput');
+                if (c) { c.value = this.value; c.dispatchEvent(new Event('change')); }
+            });
+        }
+    });
+})();
+
+// ===== MOBILE SCENARIO SELECT =====
+function mobRenderScenarioSelect() {
+    var sel = document.getElementById('mob-scenario-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    scenarios.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        if (s.id === activeScenarioId) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function mobScenarioChange(id) {
+    switchScenario(id);
+}
+
+// renderScenarioTabs にモバイルセレクトも同期させる
+var _origRenderScenarioTabs = window.renderScenarioTabs;
+window.renderScenarioTabs = function() {
+    if (typeof _origRenderScenarioTabs === 'function') _origRenderScenarioTabs();
+    mobRenderScenarioSelect();
+};
+
+window.addEventListener('load', function() {
+    mobRenderScenarioSelect();
+});
+//   const formData = new FormData();
+//   formData.append('file', blob, 'audio.webm');
+//   formData.append('model', 'whisper-1');
+//   const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+//   const { text } = await res.json();
+//   return text;
+// }
+
+// ===== [NEW] INTERVIEW MODE END =====
+
+// ===== PIP CAPTURE =====
+(function() {
+  const pip    = document.getElementById('pip-capture');
+  const canvas = document.getElementById('pip-cap-canvas');
+  const ctx    = canvas.getContext('2d');
+  const video  = document.getElementById('pip-hidden-video');
+  let stream = null, rafId = null;
+  let zoom = 1.0, panX = 0, panY = 0;
+
+  // 起動ボタンをtop-barに追加
+  var startBtn = document.createElement('div');
+  startBtn.className = 'top-btn';
+  startBtn.textContent = '📷 画面';
+  startBtn.title = '画面キャプチャ（相手の顔を小窓表示）';
+  startBtn.onclick = pipStart;
+  document.querySelector('.top-bar').appendChild(startBtn);
+
+  async function pipStart() {
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+      video.srcObject = stream;
+      await video.play();
+      pip.style.display = 'block';
+      pip.classList.remove('minimized');
+      pipResetView();
+      startRender();
+      stream.getVideoTracks()[0].onended = pipStop;
+    } catch(e) {}
+  }
+
+  window.pipStop = function() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    cancelAnimationFrame(rafId);
+    pip.style.display = 'none';
+  };
+
+  function startRender() {
+    function render() {
+      if (!stream) return;
+      const w = canvas.offsetWidth, h = canvas.offsetHeight;
+      canvas.width = w; canvas.height = h;
+      const vw = video.videoWidth || 1, vh = video.videoHeight || 1;
+      const sx = (vw / 2 + panX) - (w / zoom / 2);
+      const sy = (vh / 2 + panY) - (h / zoom / 2);
+      const sw = w / zoom, sh = h / zoom;
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(video,
+        Math.max(0, sx), Math.max(0, sy),
+        Math.min(sw, vw - Math.max(0, sx)),
+        Math.min(sh, vh - Math.max(0, sy)),
+        0, 0, w, h
+      );
+      rafId = requestAnimationFrame(render);
+    }
+    render();
+  }
+
+  window.pipResetView = function() {
+    zoom = 1.0; panX = 0; panY = 0;
+    document.getElementById('pip-zoom-slider').value = 100;
+    document.getElementById('pip-zoom-label').textContent = '100%';
+  };
+
+  window.pipOnZoomSlider = function(val) {
+    zoom = val / 100;
+    document.getElementById('pip-zoom-label').textContent = val + '%';
+  };
+
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    zoom = Math.max(0.2, Math.min(4.0, zoom - e.deltaY * 0.001));
+    const pct = Math.round(zoom * 100);
+    document.getElementById('pip-zoom-slider').value = Math.min(400, pct);
+    document.getElementById('pip-zoom-label').textContent = pct + '%';
+  }, { passive: false });
+
+  // パン
+  let panning = false, panSX, panSY, panOX, panOY;
+  canvas.addEventListener('mousedown', function(e) {
+    panning = true; panSX = e.clientX; panSY = e.clientY;
+    panOX = panX; panOY = panY;
+    canvas.classList.add('panning');
+    e.stopPropagation();
+  });
+
+  // ダブルクリックで最小化
+  pip.addEventListener('dblclick', function(e) {
+    if (e.target.classList.contains('pip-resize-handle')) return;
+    if (['pip-cap-close','pip-cap-reset'].includes(e.target.id)) return;
+    pip.classList.toggle('minimized');
+  });
+
+  // ウィンドウドラッグ
+  let dragging = false, dragOX, dragOY, dragSX, dragSY;
+  pip.addEventListener('mousedown', function(e) {
+    if (e.target === canvas) return;
+    if (e.target.classList.contains('pip-resize-handle')) return;
+    if (['pip-cap-close','pip-cap-reset'].includes(e.target.id)) return;
+    dragging = true;
+    const r = pip.getBoundingClientRect();
+    dragSX = e.clientX; dragSY = e.clientY;
+    dragOX = r.left; dragOY = r.top;
+    pip.style.right = 'auto'; pip.style.bottom = 'auto';
+    pip.style.left = dragOX + 'px'; pip.style.top = dragOY + 'px';
+    e.preventDefault();
+  });
+
+  // リサイズ
+  let resizing = false, resizeDir, resOX, resOY, resW, resH, resPX, resPY;
+  document.querySelectorAll('.pip-resize-handle').forEach(function(h) {
+    h.addEventListener('mousedown', function(e) {
+      e.stopPropagation();
+      resizing = true; resizeDir = h.dataset.dir;
+      const r = pip.getBoundingClientRect();
+      resOX = e.clientX; resOY = e.clientY;
+      resW = r.width; resH = r.height;
+      resPX = r.left; resPY = r.top;
+      pip.style.left = resPX + 'px'; pip.style.top = resPY + 'px';
+      pip.style.right = 'auto'; pip.style.bottom = 'auto';
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (panning) {
+      const vw = video.videoWidth || 1, vh = video.videoHeight || 1;
+      const w = canvas.offsetWidth, h = canvas.offsetHeight;
+      panX = panOX - (e.clientX - panSX) / zoom;
+      panY = panOY - (e.clientY - panSY) / zoom;
+      const maxPX = vw / 2 - w / zoom / 2;
+      const maxPY = vh / 2 - h / zoom / 2;
+      panX = Math.max(-maxPX, Math.min(maxPX, panX));
+      panY = Math.max(-maxPY, Math.min(maxPY, panY));
+    }
+    if (dragging) {
+      pip.style.left = (dragOX + e.clientX - dragSX) + 'px';
+      pip.style.top  = (dragOY + e.clientY - dragSY) + 'px';
+    }
+    if (resizing) {
+      const minW = 160, minH = 90;
+      const dx = e.clientX - resOX, dy = e.clientY - resOY;
+      if (resizeDir === 'se') {
+        pip.style.width  = Math.max(minW, resW + dx) + 'px';
+        pip.style.height = Math.max(minH, resH + dy) + 'px';
+      } else if (resizeDir === 'sw') {
+        const nw = Math.max(minW, resW - dx);
+        pip.style.width = nw + 'px'; pip.style.height = Math.max(minH, resH + dy) + 'px';
+        pip.style.left = (resPX + resW - nw) + 'px';
+      } else if (resizeDir === 'ne') {
+        pip.style.width = Math.max(minW, resW + dx) + 'px';
+        const nh = Math.max(minH, resH - dy);
+        pip.style.height = nh + 'px'; pip.style.top = (resPY + resH - nh) + 'px';
+      } else if (resizeDir === 'nw') {
+        const nw = Math.max(minW, resW - dx), nh = Math.max(minH, resH - dy);
+        pip.style.width = nw + 'px'; pip.style.height = nh + 'px';
+        pip.style.left = (resPX + resW - nw) + 'px'; pip.style.top = (resPY + resH - nh) + 'px';
+      }
+    }
+  });
+
+  document.addEventListener('mouseup', function() {
+    panning = dragging = resizing = false;
+    canvas.classList.remove('panning');
+  });
+})();
+
 </script>
 </body>
 </html>
