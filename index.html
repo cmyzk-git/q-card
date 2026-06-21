@@ -158,6 +158,27 @@
             font-size: 0.72rem;
             font-family: 'DM Mono', monospace;
         }
+
+        /* [NEW] カード比率セレクト */
+        #cardRatioSelect {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+            font-size: 0.7rem;
+            padding: 3px 4px;
+            cursor: pointer;
+        }
+        #cardRatioCustom {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+            text-align: center;
+            padding: 3px 2px;
+            font-size: 0.72rem;
+            font-family: 'DM Mono', monospace;
+        }
         input[type="range"] { width: 64px; accent-color: var(--accent); cursor: pointer; }
         .val-badge {
             font-family: 'DM Mono', monospace;
@@ -271,6 +292,61 @@
         }
         .search-count.has-results { color: var(--accent); }
 
+        /* ─── [NEW] 表示設定（旧TOP BARの設定群をここに集約） ─── */
+        #display-settings-wrap { position: relative; flex-shrink: 0; }
+        #display-settings-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 7px;
+            padding: 5px 11px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        #display-settings-btn:hover { border-color: var(--border2); color: var(--text); }
+        #display-settings-btn.active { background: rgba(61,139,255,0.12); border-color: var(--accent); color: var(--accent); }
+        #display-settings-popover {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 10px;
+            padding: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+            z-index: 300;
+            width: 280px;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #display-settings-popover.open { display: flex; }
+        .ds-row { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); flex-wrap: wrap; }
+        .ds-row label { white-space: nowrap; font-weight: 500; flex-shrink: 0; }
+        .ds-divider { height: 1px; background: var(--border); margin: 2px 0; }
+        #display-settings-popover #cardRatioSelect {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+            font-size: 0.7rem;
+            padding: 3px 4px;
+            cursor: pointer;
+        }
+        #display-settings-popover #cardRatioCustom {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+            text-align: center;
+            padding: 3px 2px;
+            font-size: 0.72rem;
+            font-family: 'DM Mono', monospace;
+        }
+
         /* ─── SCENARIO BAR ─── */
         .scenario-bar {
             background: var(--surface);
@@ -333,6 +409,20 @@
         }
         .grid-container.dimmed { opacity: 0.12; pointer-events: none; }
 
+        /* [NEW] 行1×列1の場合：画面中央に大きな正方形/比率カードを1枚表示 */
+        .grid-container.single-card-mode {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        .grid-container.single-card-mode .grid-item {
+            width: min(90%, 640px);
+            height: auto !important;
+            max-height: 90%;
+            aspect-ratio: 1 / 1; /* デフォルトは正方形。比率設定で上書きされる */
+        }
+
         .grid-item {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -368,6 +458,133 @@
         }
         body.view-mode .grid-item { cursor: pointer; }
         body.view-mode .drag-handle { display: none; }
+
+        /* ─── [NEW] オーバーレイ内の画像（紙芝居モード） ─── */
+        #overlay-media-layer {
+            display: none;
+            width: 100%;
+            max-height: 55%;
+            margin-bottom: 14px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--surface2);
+            flex-shrink: 0;
+            position: relative;
+        }
+        #overlay-media-layer.show { display: block; }
+        #overlay-media-layer img {
+            width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        /* [NEW] オーバーレイ内：画像の差し替え・削除ボタン */
+        #overlay-media-controls {
+            position: absolute;
+            bottom: 8px; right: 8px;
+            display: flex;
+            gap: 6px;
+            z-index: 20;
+        }
+        #overlay-media-controls button {
+            background: rgba(8,12,20,0.75);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.68rem;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        #overlay-media-controls button:hover { background: rgba(8,12,20,0.92); }
+        /* 閲覧・朗読・録音モードでは編集系ボタンを隠す（画像を見るだけのモードのため） */
+        body.view-mode #overlay-media-controls,
+        body.reading-mode #overlay-media-controls,
+        body.interview-mode #overlay-media-controls {
+            display: none !important;
+        }
+        /* 紙芝居モード（画像あり＋朗読モード）の時は本文を控えめに */
+        #overlay-media-layer.show ~ #overlay-text {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        .grid-item.has-media .title-input,
+        .grid-item.has-media .content-textarea,
+        .grid-item.has-media .item-meta,
+        .grid-item.has-media .field-clear-btn {
+            display: none !important;
+        }
+        .card-media-layer {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            border-radius: 9px;
+            overflow: hidden;
+            background: var(--surface2);
+        }
+        .grid-item.has-media .card-media-layer { display: block; }
+        .card-media-layer img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .card-media-remove {
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 24px; height: 24px;
+            background: rgba(8,12,20,0.75);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            /* [MOD] ホバーがないタッチデバイスでも見つけられるよう常時表示（薄く）にする */
+            opacity: 0.55;
+            transition: opacity 0.15s;
+        }
+        .grid-item:hover .card-media-remove,
+        .card-media-remove:active { opacity: 1; }
+        body.view-mode .card-media-remove,
+        body.reading-mode .card-media-remove,
+        body.interview-mode .card-media-remove { display: none !important; }
+        /* 画像追加ボタン（編集モードのみ・画像未登録時にホバーで表示） */
+        .card-media-add-btn {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            align-items: center; justify-content: center;
+            background: rgba(61,139,255,0.06);
+            border: 1.5px dashed transparent;
+            border-radius: 9px;
+            color: var(--text-dim);
+            font-size: 0.68rem;
+            cursor: pointer;
+            flex-direction: column;
+            gap: 4px;
+            transition: all 0.15s;
+        }
+        body.edit-mode-active .grid-item:not(.has-media):hover .card-media-add-btn { display: flex; }
+        .card-media-add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(61,139,255,0.1); }
+        .card-media-add-btn .icon { font-size: 1.1rem; }
+        /* ドラッグオーバー時のフィードバック */
+        .grid-item.media-drag-over { border-color: var(--accent) !important; box-shadow: 0 0 0 2px var(--accent-glow) !important; }
+
+        /* ─── [NEW] グリッド画像表示トグル（body.media-hiddenで一括非表示） ─── */
+        body.media-hidden .grid-item .card-media-layer,
+        body.media-hidden .grid-item .card-media-remove,
+        body.media-hidden .grid-item .card-media-add-btn {
+            display: none !important;
+        }
+        body.media-hidden .grid-item.has-media .title-input { display: block !important; }
+        body.media-hidden .grid-item.has-media .content-textarea { display: block !important; }
+        body.media-hidden .grid-item.has-media .item-meta { display: flex !important; }
+        body.media-hidden .grid-item.has-media .field-row { display: flex !important; }
         body.edit-mode-active .grid-item:hover { border-color: var(--accent2); }
 
         .drag-handle {
@@ -1772,37 +1989,6 @@
 
     <div class="divider"></div>
 
-    <div class="ctrl-group">
-        <label>行</label>
-        <input type="number" id="rowsInput" min="1" max="999" value="4" class="num">
-        <span style="color:var(--text-dim);font-size:0.7rem;">x</span>
-        <label>列</label>
-        <input type="number" id="colsInput" min="1" max="99"  value="4" class="num">
-    </div>
-    <div class="divider"></div>
-    <div class="ctrl-group">
-        <label>文字</label>
-        <input type="range" id="fontSizeSlider" min="10" max="100" value="30">
-        <input type="number" id="fontSizeNum" min="10" max="150" value="30" class="num">
-        <span style="font-size:0.65rem;color:var(--text-dim)">px</span>
-    </div>
-    <div class="divider"></div>
-    <div class="ctrl-group">
-        <label>幅</label>
-        <input type="range" id="widthSlider" min="20" max="98" value="85">
-        <span class="val-badge" id="widthDisplay">85%</span>
-    </div>
-    <div class="ctrl-group">
-        <label>高さ</label>
-        <input type="range" id="heightSlider" min="20" max="95" value="55">
-        <span class="val-badge" id="heightDisplay">55%</span>
-    </div>
-    <div class="divider"></div>
-    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
-        <span id="themeIcon">☀️</span>
-        <span id="themeLabel">ライト</span>
-    </div>
-
     <!-- SAVE INDICATOR -->
     <div class="save-indicator saved" id="saveIndicator">
         <div class="dot"></div>
@@ -1810,7 +1996,6 @@
     </div>
 
     <div style="flex:1"></div>
-    <div class="top-btn" id="timerToggleBtn" onclick="toggleTimerWidget()">⏱ TIMER</div>
     <div class="top-btn" onclick="showTutorial()">? ヘルプ</div>
     <div class="top-btn danger" onclick="clearAll()">全消去</div>
     <div class="top-btn" onclick="openDataModal()">データ管理</div>
@@ -1883,6 +2068,60 @@
     <div style="flex:1"></div>
     <div style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;white-space:nowrap;">
         <kbd>Ctrl+F</kbd> 検索
+    </div>
+    <!-- [NEW] 表示設定（旧TOP BARの行列・文字・幅高さ・テーマ・比率・画像・タイマー表示をここに集約） -->
+    <div id="display-settings-wrap">
+        <button id="display-settings-btn" onclick="toggleDisplaySettings(event)" title="表示設定">⚙️ 表示設定</button>
+        <div id="display-settings-popover">
+            <div class="ds-row">
+                <label>行</label>
+                <input type="number" id="rowsInput" min="1" max="999" value="4" class="num">
+                <span style="color:var(--text-dim);font-size:0.7rem;">×</span>
+                <label>列</label>
+                <input type="number" id="colsInput" min="1" max="99"  value="4" class="num">
+            </div>
+            <div class="ds-row">
+                <label>文字</label>
+                <input type="range" id="fontSizeSlider" min="10" max="100" value="30">
+                <input type="number" id="fontSizeNum" min="10" max="150" value="30" class="num">
+                <span style="font-size:0.65rem;color:var(--text-dim)">px</span>
+            </div>
+            <div class="ds-row">
+                <label>幅</label>
+                <input type="range" id="widthSlider" min="20" max="98" value="85">
+                <span class="val-badge" id="widthDisplay">85%</span>
+            </div>
+            <div class="ds-row">
+                <label>高さ</label>
+                <input type="range" id="heightSlider" min="20" max="95" value="55">
+                <span class="val-badge" id="heightDisplay">55%</span>
+            </div>
+            <div class="ds-divider"></div>
+            <!-- [NEW] カード縦横比設定 -->
+            <div class="ds-row" id="ratioCtrlGroup">
+                <label>比率</label>
+                <select id="cardRatioSelect" onchange="onCardRatioChange(this.value)">
+                    <option value="auto">自動</option>
+                    <option value="fit">フィット（画面に合わせる）</option>
+                    <option value="1:1">1:1（正方形）</option>
+                    <option value="1:1.4">1:1.4（カード）</option>
+                    <option value="custom">カスタム…</option>
+                </select>
+                <input type="number" id="cardRatioCustom" min="0.3" max="3" step="0.05" value="1.4" style="display:none;width:48px;" title="高さ ÷ 幅 の倍率" onchange="onCardRatioCustomChange(this.value)">
+            </div>
+            <div class="ds-divider"></div>
+            <div class="ds-row">
+                <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                    <span id="themeIcon">☀️</span>
+                    <span id="themeLabel">ライト</span>
+                </div>
+                <!-- [NEW] グリッド画像表示トグル -->
+                <div class="top-btn" id="mediaToggleBtn" onclick="toggleMediaDisplay()">🖼 画像: ON</div>
+            </div>
+            <div class="ds-row">
+                <div class="top-btn" id="timerToggleBtn" onclick="toggleTimerWidget()" style="width:100%;text-align:center;">⏱ タイマー表示切替</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2020,6 +2259,15 @@
             <button class="sp-btn" onclick="overlayAdjustSize('height', +5)">+</button>
         </div>
     </div>
+    <!-- [NEW] オーバーレイ内の画像表示（紙芝居モード用） -->
+    <div id="overlay-media-layer">
+        <img id="overlay-media-img" src="" alt="">
+        <!-- [NEW] オーバーレイ内で画像の差し替え・削除ができる操作バー -->
+        <div id="overlay-media-controls">
+            <button id="overlay-media-replace-btn" onclick="overlayMediaReplace()" title="画像を差し替え">🔄 差し替え</button>
+            <button id="overlay-media-remove-btn"  onclick="overlayMediaRemove()"  title="画像を削除">🗑 削除</button>
+        </div>
+    </div>
     <div id="overlay-title"></div>
     <div id="overlay-title-edit-row" class="overlay-field-row">
         <input type="text" id="overlay-title-edit" placeholder="タイトルを編集...">
@@ -2112,10 +2360,12 @@
             <div style="display:flex;gap:8px;">
                 <button class="modal-btn" onclick="document.getElementById('importFileJSON').click()"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
                 <button class="modal-btn" onclick="document.getElementById('importFileCSV').click()"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <button class="modal-btn" onclick="document.getElementById('importFileMD').click()"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">⚠️ 現在のデータは上書きされます</div>
             <input type="file" id="importFileJSON" accept=".json" style="display:none" onchange="importJSON(event)">
             <input type="file" id="importFileCSV"  accept=".csv"  style="display:none" onchange="importCSV(event)">
+            <input type="file" id="importFileMD"   accept=".md,.markdown,.txt" style="display:none" onchange="importMD(event)">
             <!-- [NEW] 貼り付けで読み込み（JSON / Markdownを自動判定） -->
             <div style="margin-top:12px;">
                 <textarea id="paste-import-area" placeholder="ここにJSONまたはMarkdownを貼り付け…" style="width:100%;height:64px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.72rem;padding:8px 10px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;"></textarea>
@@ -2178,6 +2428,155 @@
 <video id="pip-hidden-video" autoplay muted style="display:none"></video>
 
 <script>
+// ===== [NEW] カード画像（メディア）保存 =====
+// createItem() より前に必ず定義しておく必要がある（init()がページ読込時に即時実行されるため）
+var mediaDB = (function() {
+    var db = null;
+    var DB_NAME    = 'qcard_media';
+    var DB_VERSION = 1;
+    var STORE      = 'media';
+
+    function open() {
+        return new Promise(function(resolve, reject) {
+            if (db) { resolve(db); return; }
+            var req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = function(e) {
+                var d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE)) {
+                    d.createObjectStore(STORE, { keyPath: 'cardId' });
+                }
+            };
+            req.onsuccess = function(e) { db = e.target.result; resolve(db); };
+            req.onerror   = function(e) { reject(e); };
+        });
+    }
+
+    function save(record) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).put(record);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function get(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readonly');
+                var req = tx.objectStore(STORE).get(cardId);
+                req.onsuccess = function() { resolve(req.result || null); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function remove(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).delete(cardId);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    return { save: save, get: get, remove: remove };
+})();
+
+// 画像ファイルを保存して即時反映
+function mediaSaveImageFile(cardId, item, file) {
+    if (!file) return;
+    var record = {
+        cardId: cardId,
+        type: 'image',   // [将来拡張] 'video' / 'iframe' もこの枠で扱える
+        blob: file,
+        mimeType: file.type,
+        savedAt: new Date().toISOString()
+    };
+    mediaDB.save(record).then(function() {
+        var img = item.querySelector('.card-media-layer img');
+        if (img) {
+            var url = URL.createObjectURL(file);
+            img.src = url;
+        }
+        item.classList.add('has-media');
+        showToast('🖼 画像を追加しました');
+        // [NEW] このカードがオーバーレイで表示中なら、オーバーレイ側の画像も即時更新
+        if (typeof editCardItem !== 'undefined' && editCardItem === item) {
+            overlayShowMediaForCard(item);
+        }
+    });
+}
+
+// ファイル選択ダイアログを開いて画像登録
+function mediaOpenFilePicker(cardId, item) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', function() {
+        if (input.files && input.files[0]) {
+            mediaSaveImageFile(cardId, item, input.files[0]);
+        }
+    });
+    input.click();
+}
+
+// カードの既存画像を読み込んで表示
+function mediaLoadForCard(cardId, item, imgEl) {
+    mediaDB.get(cardId).then(function(record) {
+        if (record && record.blob) {
+            var url = URL.createObjectURL(record.blob);
+            imgEl.src = url;
+            item.classList.add('has-media');
+        }
+    });
+}
+
+// 画像を削除
+function mediaRemoveCard(cardId, item) {
+    mediaDB.remove(cardId).then(function() {
+        item.classList.remove('has-media');
+        var img = item.querySelector('.card-media-layer img');
+        if (img) img.src = '';
+        showToast('画像を削除しました');
+        // [NEW] このカードがオーバーレイで表示中なら、オーバーレイ側の画像も即時非表示
+        if (typeof editCardItem !== 'undefined' && editCardItem === item) {
+            overlayShowMediaForCard(item);
+        }
+    });
+}
+
+// [NEW] オーバーレイ内：画像を差し替え（ファイル選択ダイアログを開く）
+function overlayMediaReplace() {
+    if (!editCardItem) return;
+    var cardId = editCardItem.dataset.mediaId;
+    if (!cardId) return; // 通常はここに来る前にhas-mediaのはずだが念のため
+    mediaOpenFilePicker(cardId, editCardItem);
+}
+
+// [NEW] オーバーレイ内：画像を削除
+function overlayMediaRemove() {
+    if (!editCardItem) return;
+    var cardId = editCardItem.dataset.mediaId;
+    if (!cardId) return;
+    if (!confirm('この画像を削除しますか？')) return;
+    mediaRemoveCard(cardId, editCardItem);
+}
+
+// [NEW] グリッド画像表示トグル
+var mediaDisplayOn = (localStorage.getItem('kp_media_display') !== '0'); // デフォルトON
+function toggleMediaDisplay() {
+    mediaDisplayOn = !mediaDisplayOn;
+    localStorage.setItem('kp_media_display', mediaDisplayOn ? '1' : '0');
+    document.body.classList.toggle('media-hidden', !mediaDisplayOn);
+    var btn = document.getElementById('mediaToggleBtn');
+    if (btn) btn.textContent = '🖼 画像: ' + (mediaDisplayOn ? 'ON' : 'OFF');
+}
+
 // ===== STATE =====
 const grid         = document.getElementById('grid');
 const backdrop     = document.getElementById('overlay-backdrop');
@@ -2366,6 +2765,14 @@ function toggleTheme() {
     bindControls();
     bindKeyboard();
     applySpeechClickLockUI();
+
+    // [NEW] グリッド画像表示トグルの初期状態を反映
+    document.body.classList.toggle('media-hidden', !mediaDisplayOn);
+    var mediaBtn = document.getElementById('mediaToggleBtn');
+    if (mediaBtn) mediaBtn.textContent = '🖼 画像: ' + (mediaDisplayOn ? 'ON' : 'OFF');
+
+    // [NEW] カード縦横比の初期状態を反映
+    applyCardRatio();
 
     // Show tutorial if first time
     var tutorialDone = localStorage.getItem('kp_tutorial_done');
@@ -2567,10 +2974,13 @@ function getCurrentGridData() {
     items.forEach(function(item) {
         var t = item.querySelector('.title-input');
         var c = item.querySelector('.content-textarea');
-        result.push({
+        // [MOD] mediaId（画像のIndexedDBキー）をデータに保持し続ける（カードに画像が登録済みの場合）
+        var entry = {
             title:   t ? t.value : '',
             content: c ? c.value : ''
-        });
+        };
+        if (item.dataset.mediaId) entry.mediaId = item.dataset.mediaId;
+        result.push(entry);
     });
     return result;
 }
@@ -2593,6 +3003,95 @@ function saveCurrentGridDataWithIndicator() {
 }
 
 // ===== GRID =====
+// [NEW] 表示設定ポップオーバーの開閉
+function toggleDisplaySettings(e) {
+    if (e) e.stopPropagation();
+    var pop = document.getElementById('display-settings-popover');
+    var btn = document.getElementById('display-settings-btn');
+    var isOpen = pop.classList.toggle('open');
+    if (btn) btn.classList.toggle('active', isOpen);
+}
+document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('display-settings-wrap');
+    var pop  = document.getElementById('display-settings-popover');
+    if (!wrap || !pop || !pop.classList.contains('open')) return;
+    if (!wrap.contains(e.target)) {
+        pop.classList.remove('open');
+        var btn = document.getElementById('display-settings-btn');
+        if (btn) btn.classList.remove('active');
+    }
+});
+
+// [NEW] カード縦横比設定
+// 'auto' = 既存仕様（height: 160px固定）/ それ以外は aspect-ratio で「横幅に対する高さの比率」を適用
+var cardRatioMode = localStorage.getItem('kp_card_ratio_mode') || 'auto';
+var cardRatioCustomValue = parseFloat(localStorage.getItem('kp_card_ratio_custom')) || 1.4;
+
+function applyCardRatio() {
+    var sel = document.getElementById('cardRatioSelect');
+    var customInput = document.getElementById('cardRatioCustom');
+    // [MOD] fitモードを選択肢の判定に追加
+    if (sel) {
+        var knownValues = ['auto', 'fit', '1:1', '1:1.4'];
+        sel.value = (knownValues.indexOf(cardRatioMode) !== -1) ? cardRatioMode : 'custom';
+    }
+    if (customInput) {
+        customInput.style.display = (sel && sel.value === 'custom') ? 'inline-block' : 'none';
+        customInput.value = cardRatioCustomValue;
+    }
+
+    var ratio = null; // 高さ ÷ 幅（fitモードでは使わない）
+    if (cardRatioMode === '1:1')   ratio = 1;
+    else if (cardRatioMode === '1:1.4') ratio = 1.4;
+    else if (cardRatioMode === 'custom') ratio = cardRatioCustomValue;
+
+    // 既存の.grid-itemクラス指定（height:160px）を上書きするためstyleタグを動的生成
+    var styleEl = document.getElementById('card-ratio-style');
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'card-ratio-style';
+        document.head.appendChild(styleEl);
+    }
+
+    if (cardRatioMode === 'fit') {
+        // [NEW] フィット：余白を作らず、利用可能な領域いっぱいにカードを表示する
+        // ・複数カードグリッド時：grid-wrapperの余白を最小化し、各行が画面の高さを均等に分け合う
+        // ・single-card-mode（行1×列1）時：余白ゼロで1枚を最大化する
+        styleEl.textContent =
+            'body:not(.mob-grid) .grid-wrapper { padding: 6px !important; overflow: hidden !important; }' +
+            'body:not(.mob-grid) .grid-container { align-content: stretch !important; height: 100% !important; }' +
+            'body:not(.mob-grid) .grid-item { aspect-ratio: auto !important; height: 100% !important; }' +
+            '.grid-container.single-card-mode { padding: 0 !important; }' +
+            '.grid-container.single-card-mode .grid-item { width: 100% !important; height: 100% !important; max-height: 100% !important; aspect-ratio: auto !important; }';
+    } else if (ratio === null) {
+        // 自動：既存仕様に戻す（CSSの上書きをクリア）
+        styleEl.textContent = '';
+    } else {
+        // [NEW] aspect-ratioで「横幅に対する高さの比率」を実現。height固定を解除する
+        // モバイルの1列/2列リスト表示（固定高さ仕様）には影響させない
+        // [FIX] align-contentはGridコンテナ自身（.grid-container）に適用する必要がある
+        // single-card-mode（行1×列1）にも比率を反映させる
+        styleEl.textContent =
+            'body:not(.mob-grid) .grid-item { height: auto !important; aspect-ratio: 1 / ' + ratio + ' !important; }' +
+            'body:not(.mob-grid) .grid-container { align-content: start !important; }' +
+            '.grid-container.single-card-mode .grid-item { aspect-ratio: 1 / ' + ratio + ' !important; }';
+    }
+}
+
+function onCardRatioChange(value) {
+    cardRatioMode = value;
+    localStorage.setItem('kp_card_ratio_mode', value);
+    applyCardRatio();
+}
+
+function onCardRatioCustomChange(value) {
+    var v = parseFloat(value);
+    if (isNaN(v) || v <= 0) v = 1.4;
+    cardRatioCustomValue = v;
+    localStorage.setItem('kp_card_ratio_custom', v);
+    if (cardRatioMode === 'custom') applyCardRatio();
+}
+
 function updateGrid() {
     var cols = getActiveCols();
     var rows = getActiveRows();
@@ -2603,7 +3102,10 @@ function updateGrid() {
     if (rowsEl) rowsEl.value = rows;
     grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
     grid.style.gridTemplateRows = '';
+    // [NEW] 行1×列1の場合：横長1枚ではなく、画面に収まる大きなカード1枚として表示する
+    grid.classList.toggle('single-card-mode', rows === 1 && cols === 1);
     renderGrid(data, total);
+    applyCardRatio();
 }
 
 function renderGrid(data, total) {
@@ -2757,10 +3259,88 @@ function createItem(index, d) {
     item.addEventListener('drop',      handleDrop);
     item.addEventListener('dragend',   handleDragEnd);
 
+    // [NEW] カード一意ID（画像保存のキーに使う）
+    // 録音機能のitvGetCardId（要素のdataset、再描画で消える）とは異なり、
+    // 画像はカードデータ自体（d.mediaId）に永続保存し、シナリオ切替やリロード後も消えないようにする
+    if (!d.mediaId) {
+        d.mediaId = 'media_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    }
+    var cardId = d.mediaId;
+    item.dataset.mediaId = cardId;
+
+    // [NEW] 画像表示レイヤー
+    var mediaLayer = document.createElement('div');
+    mediaLayer.className = 'card-media-layer';
+    var mediaImg = document.createElement('img');
+    mediaLayer.appendChild(mediaImg);
+
+    var mediaRemoveBtn = document.createElement('div');
+    mediaRemoveBtn.className = 'card-media-remove';
+    mediaRemoveBtn.title = '画像を削除';
+    mediaRemoveBtn.textContent = '✕';
+    mediaRemoveBtn.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    mediaRemoveBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!confirm('この画像を削除しますか？')) return;
+        mediaRemoveCard(cardId, item);
+    });
+    mediaLayer.appendChild(mediaRemoveBtn);
+
+    // [NEW] 画像追加ボタン（画像未登録時にホバー表示）
+    var mediaAddBtn = document.createElement('div');
+    mediaAddBtn.className = 'card-media-add-btn';
+    mediaAddBtn.innerHTML = '<span class="icon">🖼</span><span>画像を追加</span>';
+    mediaAddBtn.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    mediaAddBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        mediaOpenFilePicker(cardId, item);
+    });
+
+    // [NEW] ドラッグ&ドロップで画像登録（カードの並び替えドラッグと競合しないよう、ファイルドラッグのみ処理）
+    item.addEventListener('dragover', function(e) {
+        if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) {
+            e.preventDefault();
+            item.classList.add('media-drag-over');
+        }
+    });
+    item.addEventListener('dragleave', function() { item.classList.remove('media-drag-over'); });
+    item.addEventListener('drop', function(e) {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            item.classList.remove('media-drag-over');
+            var file = e.dataTransfer.files[0];
+            if (file.type.indexOf('image/') === 0) {
+                mediaSaveImageFile(cardId, item, file);
+            }
+        }
+    });
+
+    // [NEW] カード上でCtrl+Vペースト
+    item.addEventListener('paste', function(e) {
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image/') === 0) {
+                var file = items[i].getAsFile();
+                mediaSaveImageFile(cardId, item, file);
+                e.preventDefault();
+                break;
+            }
+        }
+    });
+    item.tabIndex = -1; // ペーストイベントを受け取れるようにする
+
     item.appendChild(handle);
     item.appendChild(meta);
     item.appendChild(titleRow);
     item.appendChild(contentRow);
+    item.appendChild(mediaAddBtn);
+    item.appendChild(mediaLayer);
+
+    // [NEW] 既存の画像データを読み込んで表示（あれば）
+    mediaLoadForCard(cardId, item, mediaImg);
+
     return item;
 }
 
@@ -2854,6 +3434,9 @@ function showOverlay(title, text, cardItem) {
         grid.classList.remove('dimmed');
     }
 
+    // [NEW] カードに画像が登録されていればオーバーレイ内にも表示（紙芝居モード対応）
+    overlayShowMediaForCard(editCardItem);
+
     // [NEW] 録音モード：カードIDを特定して履歴表示
     if (appMode === 'interview' && editCardItem) {
         var cardId = itvGetCardId(editCardItem);
@@ -2861,6 +3444,24 @@ function showOverlay(title, text, cardItem) {
     } else {
         itvHideHistory();
     }
+}
+
+// [NEW] カードに紐づく画像をオーバーレイ内に表示する
+function overlayShowMediaForCard(cardItem) {
+    var layer = document.getElementById('overlay-media-layer');
+    var img   = document.getElementById('overlay-media-img');
+    if (!layer || !img) return;
+    var mediaId = cardItem ? cardItem.dataset.mediaId : null;
+    if (!mediaId) { layer.classList.remove('show'); img.src = ''; return; }
+    mediaDB.get(mediaId).then(function(record) {
+        if (record && record.blob) {
+            img.src = URL.createObjectURL(record.blob);
+            layer.classList.add('show');
+        } else {
+            layer.classList.remove('show');
+            img.src = '';
+        }
+    });
 }
 
 // [NEW] 朗読モード専用：文節spanを生成し、クリックでその文節から朗読開始できるようにする
@@ -3091,8 +3692,15 @@ function handleDragStart(e) {
     dragSrcEl = this;
     e.dataTransfer.effectAllowed = 'move';
 }
-function handleDragOver(e) { if (e.preventDefault) e.preventDefault(); return false; }
+function handleDragOver(e) {
+    // [MOD] ファイル（画像）のドラッグは、カード並び替え用ハンドラでは処理しない
+    if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) return;
+    if (e.preventDefault) e.preventDefault();
+    return false;
+}
 function handleDrop(e) {
+    // [MOD] ファイル（画像）のドロップは、専用のmedia drop処理に委ねる
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) return;
     if (e.stopPropagation) e.stopPropagation();
     if (appMode === 'view') return false;
     if (dragSrcEl !== this) {
@@ -3447,6 +4055,24 @@ function importFromPaste() {
     updateGrid();
     ta.value = '';
     showToast('Markdown（貼り付け）をインポート'); closeDataModal();
+}
+
+// [NEW] MDファイルをインポート（既存のparseMarkdownToScenariosを再利用）
+function importMD(e) {
+    var file = e.target.files[0]; if (!file) return;
+    readFile(file, function(text) {
+        var mdScenarios = parseMarkdownToScenarios(text);
+        if (mdScenarios.length === 0) { showToast('読み込めるデータが見つかりませんでした'); return; }
+        mdScenarios.forEach(function(s) {
+            if (scenarios.length < 8) scenarios.push(s);
+        });
+        activeScenarioId = mdScenarios[0].id;
+        saveScenarios(); renderScenarioTabs();
+        document.getElementById('colsInput').value = getActiveCols();
+        updateGrid();
+        showToast('MDファイルをインポート'); closeDataModal();
+    });
+    e.target.value = '';
 }
 
 function importJSON(e) {
@@ -4062,6 +4688,7 @@ setTimer(60);
 
 // ===== [NEW] INTERVIEW MODE =====
 // IndexedDB wrapper
+
 var itvDB = (function() {
     var db = null;
     var DB_NAME    = 'qcard_interview';
@@ -4860,6 +5487,15 @@ window.rdStartFrom = function(fromEl, fromSentIdx) {
     rdRunning = true;
     rdPaused  = false;
     rdUpdateUI();
+    // [NEW] 紙芝居モード：PCではオンマウス不要で、再生中のカードを自動でポップアップ表示する
+    // （以後はrdHighlight側のロジックが、カードが進むたびにオーバーレイの内容を自動更新する）
+    if (window.innerWidth > 640 && rdItems[rdIdx]) {
+        var startItem = rdItems[rdIdx].el;
+        var t = startItem.querySelector('.title-input');
+        var c = startItem.querySelector('.content-textarea');
+        isLocked = true;
+        showOverlay(t ? t.value : '', c ? c.value : '', startItem);
+    }
     var startIdx = fromSentIdx || 0;
     setTimeout(function(){ rdSpeakFromSentence(startIdx); }, 80);
 };
