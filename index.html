@@ -813,6 +813,18 @@
         .speech-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
         .speech-btn:disabled { opacity: 0.3; cursor: default; }
         .speech-btn#speech-play-btn.speaking { border-color: var(--success); color: var(--success); }
+        /* [NEW] 録音モード：再生ボタン自体が録音中表示になる（経過時間つき） */
+        .speech-btn#speech-play-btn.recording {
+            border-color: #f2526a;
+            color: #f2526a;
+            background: rgba(242,82,106,0.12);
+            animation: mobRecBlink 1s step-end infinite;
+            width: auto;
+            min-width: 34px;
+            padding: 0 10px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
         #speech-clicklock-btn.locked { border-color: var(--warning); color: var(--warning); background: rgba(245,166,35,0.12); }
         #speech-clicklock-btn.unlocked { border-color: var(--success); color: var(--success); background: rgba(45,212,164,0.12); }
 
@@ -1170,6 +1182,17 @@
             border-radius: 3px; transition: color 0.15s;
         }
         .itv-rec-del:hover { color: var(--danger); }
+
+        /* [NEW] モバイル：録音履歴（mob-speech-areaの直下、再生ボタンの近く） */
+        #mob-itv-history {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 0 16px 8px;
+        }
+        #mob-itv-history.has-items { display: flex; }
+        body.interview-mode #mob-itv-history { display: none; }
+        body.interview-mode #mob-itv-history.has-items { display: flex; }
 
         /* 録音モードバナー */
         .interview-mode-banner {
@@ -1773,6 +1796,14 @@
             border-color: var(--accent);
             background: rgba(61,139,255,0.1);
         }
+        /* [NEW] 録音モード：録音中のボタン表示（点滅） */
+        #mob-speech-btn.recording {
+            color: #f2526a;
+            border-color: #f2526a;
+            background: rgba(242,82,106,0.12);
+            animation: mobRecBlink 1s step-end infinite;
+        }
+        @keyframes mobRecBlink { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
         #mob-speech-rate {
             background: var(--surface2);
             border: 1px solid var(--border);
@@ -2165,6 +2196,11 @@
                 <option value="1.6">1.6x</option>
                 <option value="2.0">2.0x</option>
             </select>
+        </div>
+        <!-- [NEW] 録音モード：モバイル用録音履歴（再生ボタンのすぐ下に表示） -->
+        <div id="mob-itv-history">
+            <div class="itv-history-label">録音履歴</div>
+            <div id="mob-itv-history-list"></div>
         </div>
         <div id="mobile-nav">
             <div class="mob-nav-btn" id="mob-prev">‹</div>
@@ -4462,6 +4498,11 @@ function speechSpeak(text) {
 }
 
 function speechPlay() {
+    // [NEW] 録音モード中でかつ録音中なら、このボタン（▶/⏺）クリックで録音を停止する
+    if (appMode === 'interview' && itvRecording) {
+        window.itvStopRecording();
+        return;
+    }
     if (!('speechSynthesis' in window)) { alert('このブラウザはWeb Speech APIに対応していません'); return; }
     if (speechState === 'paused') { window.speechSynthesis.resume(); speechState = 'playing'; speechUpdateUI(); return; }
     clearSpeechHighlight();
@@ -4847,12 +4888,24 @@ itvTimerRef = setInterval(function() {
 
     var m = Math.floor(itvElapsed / 60);
     var s = itvElapsed % 60;
+    var timeStr = m + ':' + (s < 10 ? '0' : '') + s;
 
     var el = document.getElementById('itv-elapsed');
 
     if (el) {
-        el.textContent =
-            m + ':' + (s < 10 ? '0' : '') + s;
+        el.textContent = timeStr;
+    }
+
+    // [NEW] モバイルの再生ボタンにも経過時間を表示（カードを下にスクロールしなくても録音中だと分かるように）
+    var mobBtn = document.getElementById('mob-speech-btn');
+    if (mobBtn && mobBtn.classList.contains('recording')) {
+        mobBtn.textContent = '⏹ ' + timeStr;
+    }
+
+    // [NEW] PCの再生ボタンにも経過時間を表示
+    var pcBtn = document.getElementById('speech-play-btn');
+    if (pcBtn && pcBtn.classList.contains('recording')) {
+        pcBtn.textContent = '⏺ ' + timeStr;
     }
 
  }, 1000);
@@ -4863,17 +4916,34 @@ window.itvStopRecording = function() {
     if (!itvRecording || !itvMediaRec) return;
     clearInterval(itvTimerRef);
     itvMediaRec.stop();
+    // [NEW] モバイルボタンの見た目も元に戻す
+    var mobBtn = document.getElementById('mob-speech-btn');
+    if (mobBtn) { mobBtn.textContent = '🎤 録音する'; mobBtn.classList.remove('recording'); }
 };
 
 // 録音バー表示/非表示
 function itvShowBar() {
     var bar = document.getElementById('itv-bar');
     if (bar) bar.classList.add('active');
+    // [NEW] PC：再生ボタン自体を録音中表示にする（再生ボタンのすぐ近くで状態が分かるように）
+    var playBtn = document.getElementById('speech-play-btn');
+    if (playBtn) {
+        playBtn.classList.add('recording');
+        playBtn.textContent = '⏺ 0:00';
+        playBtn.title = 'クリックで録音停止';
+    }
 }
 function itvHideBar() {
     var bar = document.getElementById('itv-bar');
     if (bar) bar.classList.remove('active');
     clearInterval(itvTimerRef);
+    // [NEW] PC：再生ボタンの見た目を元に戻す
+    var playBtn = document.getElementById('speech-play-btn');
+    if (playBtn) {
+        playBtn.classList.remove('recording');
+        playBtn.textContent = '▶';
+        playBtn.title = '再生';
+    }
 }
 
 // 履歴レンダリング
@@ -4951,14 +5021,20 @@ window.itvDownloadActiveScenario = function() {
 function itvRenderHistory(cardId) {
     if (!cardId) { itvHideHistory(); return; }
     itvDB.getByCardId(cardId).then(function(records) {
-        var hist = document.getElementById('itv-history');
-        var list = document.getElementById('itv-history-list');
-        if (!hist || !list) return;
-        if (!records || records.length === 0) { itvHideHistory(); return; }
+        var hist     = document.getElementById('itv-history');
+        var list     = document.getElementById('itv-history-list');
+        // [NEW] モバイル側の履歴エリアも同じデータで更新する
+        var mobHist  = document.getElementById('mob-itv-history');
+        var mobList  = document.getElementById('mob-itv-history-list');
+
+        if (!records || records.length === 0) {
+            itvHideHistory();
+            return;
+        }
         // recをキャッシュ（blobはDOM属性に入れられないため）
         if (!window.itvRecCache) window.itvRecCache = {};
-        list.innerHTML = '';
-        records.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); }).forEach(function(rec) {
+
+        function buildItem(rec) {
             window.itvRecCache[rec.id] = rec;
             var dt    = new Date(rec.createdAt);
             var label = dt.getFullYear() + '/' +
@@ -4972,7 +5048,6 @@ function itvRenderHistory(cardId) {
             item.innerHTML =
                 '<span class="itv-rec-play">▶</span>' +
                 '<span class="itv-rec-date">' + label + '</span>' +
-                // [NEW] 個別DLボタン追加
                 '<button class="itv-rec-dl"  title="ダウンロード" onclick="itvDownloadRec(\'' + rec.id + '\',event)">⬇</button>' +
                 '<button class="itv-rec-del" title="削除"         onclick="itvDeleteRec(\'' + rec.id + '\',\'' + cardId + '\',event)">✕</button>';
             item.addEventListener('click', function(e) {
@@ -4980,15 +5055,30 @@ function itvRenderHistory(cardId) {
                 if (e.target.classList.contains('itv-rec-dl'))  return;
                 itvPlayRec(rec, item);
             });
-            list.appendChild(item);
-        });
-        hist.classList.add('has-items');
+            return item;
+        }
+
+        var sorted = records.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+
+        if (list) {
+            list.innerHTML = '';
+            sorted.forEach(function(rec) { list.appendChild(buildItem(rec)); });
+        }
+        if (mobList) {
+            mobList.innerHTML = '';
+            sorted.forEach(function(rec) { mobList.appendChild(buildItem(rec)); });
+        }
+        if (hist)    hist.classList.add('has-items');
+        if (mobHist) mobHist.classList.add('has-items');
     });
 }
 
 function itvHideHistory() {
     var hist = document.getElementById('itv-history');
     if (hist) hist.classList.remove('has-items');
+    // [NEW] モバイル側も非表示に
+    var mobHist = document.getElementById('mob-itv-history');
+    if (mobHist) mobHist.classList.remove('has-items');
 }
 
 // 録音再生
@@ -5085,6 +5175,11 @@ function rdSaveRate(v) {
         if (typeof appMode === 'undefined' || appMode !== 'reading') {
             mobSpeakStop();
         }
+        // [NEW] 録音モード：カード切替時はボタンラベルを「録音する」に戻す（録音中でなければ）
+        if (typeof appMode !== 'undefined' && appMode === 'interview') {
+            var spBtn = document.getElementById('mob-speech-btn');
+            if (spBtn && !itvRecording) { spBtn.textContent = '🎤 録音する'; spBtn.classList.remove('recording'); }
+        }
 
         // 編集モード：タイトル・本文を編集可能にし、grid-item側と同期
         var isEdit = (typeof appMode !== 'undefined' && appMode === 'edit');
@@ -5139,6 +5234,15 @@ function rdSaveRate(v) {
 
         // 文節spanを再生成した直後、表示カードと朗読中カードの一致状況に応じてハイライトを再評価
         if (typeof rdHighlightMobSentence === 'function') rdHighlightMobSentence();
+
+        // [NEW] 録音モード：表示中カードの録音履歴を表示（_mobCurrentElが確定した後に実行）
+        if (typeof appMode !== 'undefined' && appMode === 'interview') {
+            if (window._mobCurrentEl) {
+                itvRenderHistory(itvGetCardId(window._mobCurrentEl));
+            } else {
+                itvHideHistory();
+            }
+        }
     }
 
     // 文節ハイライトはrdHighlightSentence（グローバル）が担当
@@ -5215,6 +5319,20 @@ function rdSaveRate(v) {
     }
 
     window.mobSpeechToggle = function() {
+        // [NEW] 録音モード：このボタンで録音の開始・停止を行う（カードを下にスクロールしなくても操作できるように）
+        if (typeof appMode !== 'undefined' && appMode === 'interview') {
+            var btn = document.getElementById('mob-speech-btn');
+            if (itvRecording) {
+                window.itvStopRecording();
+                if (btn) { btn.textContent = '🎤 録音する'; btn.classList.remove('recording'); }
+            } else {
+                editCardItem = window._mobCurrentEl;
+                if (!editCardItem) { showToast('カードが見つかりません'); return; }
+                itvStartRecording();
+                if (btn) { btn.textContent = '⏹ ' + '0:00'; btn.classList.add('recording'); }
+            }
+            return;
+        }
         if (!('speechSynthesis' in window)) { showToast('このブラウザは読み上げ非対応です'); return; }
         if (mobSpeaking) { mobSpeakStop(); return; }
         var d = mData[mIdx];
