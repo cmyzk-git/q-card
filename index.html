@@ -930,7 +930,9 @@
             transition: all 0.15s; z-index: 10; line-height: 1;
             color: var(--text-muted);
         }
-        body.view-mode #size-panel-btn { display: flex; }
+        body.view-mode #size-panel-btn,
+        body.edit-mode-active #size-panel-btn,
+        body.interview-mode #size-panel-btn { display: flex; }
         #size-panel-btn:hover  { border-color: var(--accent); color: var(--accent); }
         #size-panel-btn.active { background: rgba(61,139,255,0.15); border-color: var(--accent); color: var(--accent); }
 
@@ -2087,6 +2089,181 @@
     }
     /* 朗読モード時はカード単体読み上げUIを非表示 */
     body.reading-mode #mob-speech-area { display: none !important; }
+    /* ─── STUDY MODE ─── */
+    .mode-btn.study-mode-btn { }
+    .mode-btn.active.study-mode-btn { color: #34d399; border-color: rgba(52,211,153,0.4); }
+
+    #study-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 6px;
+    }
+    #study-audio-toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+        user-select: none;
+    }
+    #study-audio-toggle { accent-color: #34d399; }
+    .study-progress-text {
+        font-size: 0.65rem;
+        font-family: 'DM Mono', monospace;
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+
+    /* 進捗バー */
+    #study-progress-bar-wrap {
+        height: 3px;
+        display: flex;
+        flex-shrink: 0;
+    }
+    .study-prog-seg { height: 100%; transition: width 0.4s ease; }
+    #study-progress-again { background: #f87171; }
+    #study-progress-hint  { background: #fbbf24; }
+    #study-progress-done  { background: #34d399; }
+
+    /* グリッド上の学習ステータスバッジ */
+    .study-badge {
+        position: absolute;
+        top: 4px; left: 4px;
+        font-size: 0.75rem;
+        line-height: 1;
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    /* フラッシュカードオーバーレイ */
+    #study-card-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
+        z-index: 500;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    body.study-mode #study-card-overlay { display: flex; }
+    #study-card-inner {
+        width: 100%;
+        max-width: 540px;
+        perspective: 1000px;
+        cursor: pointer;
+    }
+    .study-face {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 36px 32px 28px;
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        transition: transform 0.1s;
+    }
+    .study-face:active { transform: scale(0.98); }
+    #study-card-num {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        align-self: flex-start;
+    }
+    #study-card-title-disp {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        text-align: center;
+        line-height: 1.5;
+    }
+    #study-card-tap-hint {
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        margin-top: 8px;
+    }
+    #study-card-title-back {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-align: center;
+    }
+    #study-card-content-disp {
+        font-size: 1rem;
+        color: var(--text);
+        text-align: center;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+    #study-card-eval-btns {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .study-eval-btn {
+        border: none;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .study-eval-btn.again { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+    .study-eval-btn.hint  { background: rgba(251,191,36,0.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .study-eval-btn.done  { background: rgba(52,211,153,0.15);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+    .study-eval-btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+    .study-eval-btn:active { transform: scale(0.96); }
+
+    #study-card-nav {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 16px;
+    }
+    .study-nav-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 50%;
+        width: 40px; height: 40px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.12s;
+    }
+    .study-nav-btn:active { background: var(--surface3); }
+    #study-card-counter {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-dim);
+        min-width: 60px;
+        text-align: center;
+    }
+    #study-close-btn {
+        position: absolute;
+        top: 14px; right: 16px;
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
     </style>
 </head>
 <body class="edit-mode-active">
@@ -2103,6 +2280,7 @@
         <button class="mode-btn view-mode" id="viewModeBtn" onclick="setAppMode('view')">👁 閲覧</button>
         <button class="mode-btn reading-mode-btn" id="readingModeBtn" onclick="setAppMode('reading')">📖 朗読</button>
         <button class="mode-btn interview-mode" id="interviewModeBtn" onclick="setAppMode('interview')">🎤 録音</button>
+        <button class="mode-btn study-mode-btn" id="studyModeBtn" onclick="setAppMode('study')">🧠 学習</button>
     </div>
 
     <div class="divider"></div>
@@ -2260,11 +2438,54 @@
     <span class="scenario-bar-label">シナリオ</span>
     <div id="scenario-tabs"></div>
     <button class="scenario-add-btn" id="scenario-add-btn" onclick="addScenario()">＋ 追加</button>
+    <!-- 学習モード用コントロール -->
+    <div id="study-controls" style="display:none">
+        <button class="top-btn" id="shuffle-btn" onclick="studyShuffle()" title="シャッフル">🔀 シャッフル</button>
+        <button class="top-btn" id="unshuffle-btn" onclick="studyUnshuffle()" title="元の順番に戻す" style="display:none">↩ 元順</button>
+        <label id="study-audio-toggle-label" title="クリック時に音声を再生する">
+            <input type="checkbox" id="study-audio-toggle" onchange="studyAudioToggleChange(this.checked)">
+            <span>音声再生</span>
+        </label>
+        <span id="study-progress-text" class="study-progress-text"></span>
+    </div>
+</div>
+
+<!-- 学習進捗バー -->
+<div id="study-progress-bar-wrap" style="display:none">
+    <div id="study-progress-again" class="study-prog-seg"></div>
+    <div id="study-progress-hint"  class="study-prog-seg"></div>
+    <div id="study-progress-done"  class="study-prog-seg"></div>
 </div>
 
 <!-- GRID -->
 <div class="grid-wrapper">
     <div class="grid-container" id="grid"></div>
+
+<!-- 学習モード フラッシュカードオーバーレイ -->
+<div id="study-card-overlay">
+    <div id="study-card-inner">
+        <div id="study-card-face" class="study-face front">
+            <div id="study-card-num"></div>
+            <div id="study-card-title-disp"></div>
+            <div id="study-card-tap-hint">タップして答えを確認</div>
+        </div>
+        <div id="study-card-face-back" class="study-face back" style="display:none">
+            <div id="study-card-title-back"></div>
+            <div id="study-card-content-disp"></div>
+            <div id="study-card-eval-btns">
+                <button class="study-eval-btn again" onclick="studyEval('again')">❌ もう一度</button>
+                <button class="study-eval-btn hint"  onclick="studyEval('hint')">💡 うろ覚え</button>
+                <button class="study-eval-btn done"  onclick="studyEval('done')">✅ 覚えた</button>
+            </div>
+        </div>
+    </div>
+    <div id="study-card-nav">
+        <button class="study-nav-btn" id="study-prev-btn" onclick="studyNav(-1)">‹</button>
+        <span id="study-card-counter"></span>
+        <button class="study-nav-btn" id="study-next-btn" onclick="studyNav(1)">›</button>
+    </div>
+    <button id="study-close-btn" onclick="setAppMode('edit')" title="学習を終了">✕</button>
+</div>
     <!-- MOBILE SWIPE UI -->
     <div id="mobile-swipe-wrap">
         <div id="mobile-card">
@@ -2892,11 +3113,15 @@ function triggerSave(fn) {
 function setAppMode(mode) {
     appMode = mode;
     localStorage.setItem('kp_mode', mode);
-    document.body.classList.remove('view-mode', 'edit-mode-active', 'interview-mode', 'reading-mode');
+    document.body.classList.remove('view-mode', 'edit-mode-active', 'interview-mode', 'reading-mode', 'study-mode');
     document.getElementById('editModeBtn').classList.remove('active');
     document.getElementById('viewModeBtn').classList.remove('active');
     document.getElementById('readingModeBtn').classList.remove('active');
     document.getElementById('interviewModeBtn').classList.remove('active');
+    document.getElementById('studyModeBtn').classList.remove('active');
+
+    var studyCtrl = document.getElementById('study-controls');
+    var studyBar  = document.getElementById('study-progress-bar-wrap');
 
     if (mode === 'view') {
         document.body.classList.add('view-mode');
@@ -2904,12 +3129,15 @@ function setAppMode(mode) {
         showToast('👁 閲覧モード');
         itvClearRecMarks();
         if (typeof rdStop === "function") rdStop();
+        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar)  studyBar.style.display  = 'none';
     } else if (mode === 'reading') {
         document.body.classList.add('reading-mode');
         document.getElementById('readingModeBtn').classList.add('active');
         showToast('📖 朗読モード — カードをクリック（またはタップ）して開始');
         itvClearRecMarks();
-        // rdItemsを事前ビルドしてモバイルでも即再生可能に
+        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar)  studyBar.style.display  = 'none';
         setTimeout(function() {
             if (typeof rdBuildItems === 'function') { rdBuildItems(null); rdUpdateUI(); }
         }, 100);
@@ -2919,12 +3147,25 @@ function setAppMode(mode) {
         showToast('🎤 録音練習モード');
         itvMarkRecordedCards();
         if (typeof rdStop === "function") rdStop();
+        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar)  studyBar.style.display  = 'none';
+    } else if (mode === 'study') {
+        document.body.classList.add('study-mode');
+        document.getElementById('studyModeBtn').classList.add('active');
+        showToast('🧠 学習モード');
+        itvClearRecMarks();
+        if (typeof rdStop === "function") rdStop();
+        if (studyCtrl) studyCtrl.style.display = 'flex';
+        if (studyBar)  studyBar.style.display  = 'flex';
+        setTimeout(function() { studyStart(); }, 50);
     } else {
         document.body.classList.add('edit-mode-active');
         document.getElementById('editModeBtn').classList.add('active');
         showToast('✏️ 編集モード');
         itvClearRecMarks();
         if (typeof rdStop === "function") rdStop();
+        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar)  studyBar.style.display  = 'none';
     }
     // モバイルスワイプUIの編集可否・対象データを再同期
     if (typeof mSync === 'function') { setTimeout(mSync, 0); }
@@ -3251,7 +3492,7 @@ function deleteScenario(id) {
 function getCurrentGridData() {
     var items = grid.querySelectorAll('.grid-item');
     var result = [];
-    items.forEach(function(item) {
+    items.forEach(function(item, index) {
         var t = item.querySelector('.title-input');
         var c = item.querySelector('.content-textarea');
         // [MOD] mediaId（画像のIndexedDBキー）をデータに保持し続ける（カードに画像が登録済みの場合）
@@ -3264,6 +3505,11 @@ function getCurrentGridData() {
         if (item.dataset.itvId) entry.itvId = item.dataset.itvId;
         // [NEW] 朗読音声ソース設定（speech / recorded / uploaded）
         if (item.dataset.audioSource) entry.audioSource = item.dataset.audioSource;
+        // [STUDY] 学習ステータス
+        var active = getActive();
+        if (active && active.data[index] && active.data[index].studyStatus) {
+            entry.studyStatus = active.data[index].studyStatus;
+        }
         result.push(entry);
     });
     return result;
@@ -6489,7 +6735,211 @@ window.addEventListener('load', function() {
     canvas.classList.remove('panning');
   });
 })();
+// ===== STUDY MODE =====
+(function() {
+    var studyCards    = [];   // 現在の表示順カード配列 { title, content, itvId, audioSource, origIdx }
+    var studyOriginal = [];   // 元の順番
+    var studyIdx      = 0;
+    var studyFlipped  = false;
+    var studyShuffled = false;
+    var studyAudio    = localStorage.getItem('study_audio') !== '0'; // デフォルトtrue
 
+    // --- 状態管理 ---
+    function studyGetStatus(origIdx) {
+        var active = getActive();
+        if (!active || !active.data[origIdx]) return '';
+        return active.data[origIdx].studyStatus || '';
+    }
+    function studySetStatus(origIdx, status) {
+        var active = getActive();
+        if (!active || !active.data[origIdx]) return;
+        active.data[origIdx].studyStatus = status;
+        saveScenarios();
+        studyUpdateProgress();
+        studyRenderBadges();
+    }
+
+    // --- 初期化 ---
+    window.studyStart = function() {
+        var active = getActive();
+        if (!active) return;
+        studyOriginal = (active.data || [])
+            .map(function(d, i) { return Object.assign({}, d, { origIdx: i }); })
+            .filter(function(d) { return d.title || d.content; });
+        studyCards    = studyOriginal.slice();
+        studyShuffled = false;
+        studyIdx      = 0;
+        var unshuffleBtn = document.getElementById('unshuffle-btn');
+        if (unshuffleBtn) unshuffleBtn.style.display = 'none';
+        var toggle = document.getElementById('study-audio-toggle');
+        if (toggle) toggle.checked = studyAudio;
+        studyShow();
+        studyUpdateProgress();
+        studyRenderBadges();
+    };
+
+    // --- シャッフル ---
+    window.studyShuffle = function() {
+        var arr = studyCards.slice();
+        for (var i = arr.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        studyCards    = arr;
+        studyShuffled = true;
+        studyIdx      = 0;
+        var unshuffleBtn = document.getElementById('unshuffle-btn');
+        if (unshuffleBtn) unshuffleBtn.style.display = '';
+        studyShow();
+        showToast('🔀 シャッフルしました');
+    };
+
+    window.studyUnshuffle = function() {
+        studyCards    = studyOriginal.slice();
+        studyShuffled = false;
+        studyIdx      = 0;
+        var unshuffleBtn = document.getElementById('unshuffle-btn');
+        if (unshuffleBtn) unshuffleBtn.style.display = 'none';
+        studyShow();
+        showToast('↩ 元の順番に戻しました');
+    };
+
+    // --- 音声設定 ---
+    window.studyAudioToggleChange = function(checked) {
+        studyAudio = checked;
+        localStorage.setItem('study_audio', checked ? '1' : '0');
+    };
+
+    // --- カード表示 ---
+    function studyShow() {
+        studyFlipped = false;
+        var d = studyCards[studyIdx];
+        var front = document.getElementById('study-card-face');
+        var back  = document.getElementById('study-card-face-back');
+        if (!d) return;
+        document.getElementById('study-card-num').textContent       = '#' + (studyIdx + 1) + ' / ' + studyCards.length;
+        document.getElementById('study-card-title-disp').textContent = d.title || '';
+        document.getElementById('study-card-title-back').textContent = d.title || '';
+        document.getElementById('study-card-content-disp').textContent = d.content || '';
+        front.style.display = 'flex';
+        back.style.display  = 'none';
+        document.getElementById('study-card-counter').textContent = (studyIdx + 1) + ' / ' + studyCards.length;
+        // 評価ボタンに現在のステータスを反映
+        var status = studyGetStatus(d.origIdx);
+        document.querySelectorAll('.study-eval-btn').forEach(function(btn) {
+            btn.classList.toggle('selected', btn.classList.contains(status));
+        });
+    }
+
+    // --- 裏面表示（フリップ）---
+    function studyFlip() {
+        if (studyFlipped) return;
+        studyFlipped = true;
+        var d = studyCards[studyIdx];
+        document.getElementById('study-card-face').style.display      = 'none';
+        document.getElementById('study-card-face-back').style.display = 'flex';
+        // 音声再生
+        if (studyAudio && d) {
+            studyPlayAudio(d);
+        }
+    }
+
+    // --- 音声再生 ---
+    function studyPlayAudio(d) {
+        var source = d.audioSource || 'speech';
+        if (source === 'speech' || source === 'speech-title') {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            var text = (source === 'speech-title' ? d.title : (d.title ? d.title + '。' : '') + (d.content || ''));
+            var utt = new SpeechSynthesisUtterance(text);
+            utt.lang = 'ja-JP';
+            utt.rate = rdRate || 1.0;
+            window.speechSynthesis.speak(utt);
+        } else if ((source === 'recorded' || source === 'uploaded') && d.itvId) {
+            if (typeof itvDB !== 'undefined') {
+                itvDB.getByCardId(d.itvId).then(function(recs) {
+                    if (recs && recs.length > 0) {
+                        var url = URL.createObjectURL(recs[recs.length - 1].blob);
+                        var audio = new Audio(url);
+                        audio.play();
+                    }
+                });
+            }
+        }
+    }
+
+    // --- 評価 ---
+    window.studyEval = function(status) {
+        var d = studyCards[studyIdx];
+        if (d) studySetStatus(d.origIdx, status);
+        document.querySelectorAll('.study-eval-btn').forEach(function(btn) {
+            btn.classList.toggle('selected', btn.classList.contains(status));
+        });
+        // 自動で次へ
+        setTimeout(function() { studyNav(1); }, 400);
+    };
+
+    // --- ナビゲーション ---
+    window.studyNav = function(dir) {
+        studyIdx += dir;
+        if (studyIdx < 0) studyIdx = studyCards.length - 1;
+        if (studyIdx >= studyCards.length) studyIdx = 0;
+        studyShow();
+    };
+
+    // --- 進捗バー更新 ---
+    function studyUpdateProgress() {
+        var active = getActive();
+        var total  = studyCards.length;
+        if (!active || total === 0) return;
+        var again = 0, hint = 0, done = 0;
+        studyCards.forEach(function(d) {
+            var s = studyGetStatus(d.origIdx);
+            if (s === 'again') again++;
+            else if (s === 'hint') hint++;
+            else if (s === 'done')  done++;
+        });
+        var none = total - again - hint - done;
+        var pct = function(n) { return (n / total * 100).toFixed(1) + '%'; };
+        document.getElementById('study-progress-again').style.width = pct(again);
+        document.getElementById('study-progress-hint').style.width  = pct(hint);
+        document.getElementById('study-progress-done').style.width  = pct(done);
+        document.getElementById('study-progress-text').textContent  =
+            '✅' + done + '  💡' + hint + '  ❌' + again + '  ─' + none;
+    }
+
+    // --- グリッドカードにバッジ表示 ---
+    function studyRenderBadges() {
+        if (appMode !== 'study') return;
+        grid.querySelectorAll('.grid-item').forEach(function(item, i) {
+            var old = item.querySelector('.study-badge');
+            if (old) old.remove();
+            var active = getActive();
+            if (!active || !active.data[i]) return;
+            var status = active.data[i].studyStatus;
+            if (!status) return;
+            var badge = document.createElement('span');
+            badge.className = 'study-badge';
+            badge.textContent = status === 'done' ? '✅' : status === 'hint' ? '💡' : '❌';
+            item.style.position = 'relative';
+            item.appendChild(badge);
+        });
+    }
+
+    // カードクリック（表面）でフリップ
+    document.getElementById('study-card-face').addEventListener('click', studyFlip);
+
+    // シナリオ切替時に再起動
+    document.addEventListener('scenarioChanged', function() {
+        if (appMode === 'study') studyStart();
+    });
+
+    // 評価済みボタンのスタイル
+    var styleEl = document.createElement('style');
+    styleEl.textContent = '.study-eval-btn.selected { filter: brightness(1.3); transform: scale(1.05); box-shadow: 0 0 0 2px currentColor; }';
+    document.head.appendChild(styleEl);
+
+})();
 </script>
 </body>
 </html>
