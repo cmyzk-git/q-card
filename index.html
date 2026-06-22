@@ -372,7 +372,22 @@
         .scenario-tab.active { border-color: var(--accent); background: rgba(61,139,255,0.1); }
         .scenario-tab:hover:not(.active) { border-color: var(--border2); background: var(--surface3); }
         .scenario-tab.dragging { opacity: 0.4; border-style: dashed; }
-        .scenario-tab.drag-over { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(108,99,255,0.25); }
+        .scenario-tab.drop-swap-target { border-color: var(--warning) !important; box-shadow: 0 0 0 2px rgba(245,166,35,0.4) !important; }
+        .scenario-tab.drop-insert-before::before,
+        .scenario-tab.drop-insert-after::after {
+            content: '';
+            position: absolute;
+            top: 2px; bottom: 2px;
+            width: 3px;
+            border-radius: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            z-index: 20;
+            pointer-events: none;
+            animation: insertLinePulse 0.6s ease-in-out infinite;
+        }
+        .scenario-tab.drop-insert-before::before { left: -4px; }
+        .scenario-tab.drop-insert-after::after    { right: -4px; }
         .scenario-tab .tab-key {
             font-family: 'DM Mono', monospace;
             font-size: 0.56rem; background: var(--border); border-radius: 3px;
@@ -446,6 +461,30 @@
         .grid-item:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.3); transform: translateY(-1px); }
         .grid-item.shortcut-active { border-color: var(--success); box-shadow: 0 0 0 2px rgba(45,212,164,0.25); }
         .grid-item.dragging { opacity: 0.35; transform: scale(0.95); border-style: dashed; }
+
+        /* [NEW] ドラッグ中：スワップ予告（カード中央にドラッグした時、対象カードの縁が光る） */
+        .grid-item.drop-swap-target {
+            border-color: var(--warning) !important;
+            box-shadow: 0 0 0 2px rgba(245,166,35,0.4) !important;
+        }
+
+        /* [NEW] ドラッグ中：挿入予告（カードの境界に縦線が光る） */
+        .grid-item.drop-insert-before::before,
+        .grid-item.drop-insert-after::after {
+            content: '';
+            position: absolute;
+            top: 4px; bottom: 4px;
+            width: 3px;
+            border-radius: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            z-index: 20;
+            pointer-events: none;
+            animation: insertLinePulse 0.6s ease-in-out infinite;
+        }
+        .grid-item.drop-insert-before::before { left: -5px; }
+        .grid-item.drop-insert-after::after    { right: -5px; }
+        @keyframes insertLinePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         .grid-item.search-match { border-color: rgba(245,166,35,0.6); box-shadow: 0 0 0 1px rgba(245,166,35,0.2); }
         .grid-item.search-hide { opacity: 0.18; pointer-events: none; }
 
@@ -799,6 +838,46 @@
         }
 
         /* ─── SPEECH BAR ─── */
+        /* [NEW] 朗読音声ソース選択UI */
+        #audio-source-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 8px 0 4px;
+            margin-top: 10px;
+            border-top: 1px solid var(--border);
+            font-size: 0.7rem;
+        }
+        body.interview-mode #audio-source-row { display: none !important; }
+        .as-label {
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.62rem;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+        .as-radio {
+            display: flex; align-items: center; gap: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .as-radio input { accent-color: var(--accent); cursor: pointer; }
+        #audio-upload-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+        #audio-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+
         #speech-bar {
             position: sticky; bottom: 0; left: 0; right: 0;
             background: var(--surface); border-top: 1px solid var(--border);
@@ -1096,14 +1175,22 @@
         body.interview-mode .title-input,
         body.interview-mode .content-textarea { pointer-events: none; user-select: none; }
 
-        /* 録音済みドット（インタビューモード時のみ表示） */
-        body.interview-mode .grid-item.itv-has-rec::after {
-            content: '';
+        /* [MOD] 録音済みドット：全モードで表示する（録音モード専用の制限を撤廃） */
+        .grid-item.itv-has-rec::after {
+            content: '🎤';
             position: absolute;
             top: 6px; right: 6px;
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: rgba(242, 82, 106, 0.55);
+            font-size: 0.62rem;
+            line-height: 1;
+            pointer-events: none;
+        }
+        /* [NEW] アップロード音声済みマーク（録音マークと被らないよう少し左に） */
+        .grid-item.itv-has-upload::before {
+            content: '📁';
+            position: absolute;
+            top: 6px; right: 22px;
+            font-size: 0.62rem;
+            line-height: 1;
             pointer-events: none;
         }
 
@@ -2314,6 +2401,15 @@
         <textarea id="overlay-edit" placeholder="内容を編集..."></textarea>
         <button class="overlay-field-clear" id="overlay-edit-clear" onclick="overlayClearField('content')" title="本文を削除">×</button>
     </div>
+    <!-- [NEW] 朗読音声ソース選択（カードごとに設定。録音モードでは非表示） -->
+    <div id="audio-source-row">
+        <span class="as-label">読み上げ音声</span>
+        <label class="as-radio"><input type="radio" name="audioSource" value="speech" onchange="overlaySetAudioSource('speech')"> 🔊 本文</label>
+        <label class="as-radio"><input type="radio" name="audioSource" value="recorded" onchange="overlaySetAudioSource('recorded')"> 🎤 録音</label>
+        <label class="as-radio"><input type="radio" name="audioSource" value="uploaded" onchange="overlaySetAudioSource('uploaded')"> 📁 アップロード</label>
+        <button id="audio-upload-btn" onclick="overlayUploadAudio()" title="音声ファイルをアップロード">📁 音声を選択</button>
+        <input type="file" id="overlay-audio-upload-input" accept="audio/*" style="display:none" onchange="overlayHandleAudioUpload(event)">
+    </div>
     <div id="speech-bar">
         <button class="speech-btn" id="speech-play-btn"  onclick="speechPlay()"  title="再生">▶</button>
         <button class="speech-btn" id="speech-pause-btn" onclick="speechPause()" title="一時停止" disabled>⏸</button>
@@ -2521,6 +2617,139 @@ var mediaDB = (function() {
     }
 
     return { save: save, get: get, remove: remove };
+})();
+
+// [NEW] カードへのアップロード音声保存（1カード1ファイル、差し替え可能）
+var uploadDB = (function() {
+    var db = null;
+    var DB_NAME    = 'qcard_upload_audio';
+    var DB_VERSION = 1;
+    var STORE      = 'audio';
+
+    function open() {
+        return new Promise(function(resolve, reject) {
+            if (db) { resolve(db); return; }
+            var req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = function(e) {
+                var d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE)) {
+                    d.createObjectStore(STORE, { keyPath: 'cardId' });
+                }
+            };
+            req.onsuccess = function(e) { db = e.target.result; resolve(db); };
+            req.onerror   = function(e) { reject(e); };
+        });
+    }
+
+    function save(record) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).put(record);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function get(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readonly');
+                var req = tx.objectStore(STORE).get(cardId);
+                req.onsuccess = function() { resolve(req.result || null); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function remove(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).delete(cardId);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    return { save: save, get: get, remove: remove };
+})();
+
+// [NEW] アップロード音声ファイルを保存
+function uploadSaveAudioFile(cardId, file) {
+    if (!file) return Promise.resolve();
+    var record = {
+        cardId: cardId,
+        blob: file,
+        mimeType: file.type,
+        fileName: file.name,
+        savedAt: new Date().toISOString()
+    };
+    return uploadDB.save(record);
+}
+
+// [MOD] itvDB（録音データ保存）をここで定義する。
+// updateGrid() -> itvMarkRecordedCards() がページ読み込み時に即座に呼ばれるため、
+// それより前にitvDBが必ず初期化されている必要がある（varの巻き上げは値を保証しないため）。
+var itvDB = (function() {
+    var db = null;
+    var DB_NAME    = 'qcard_interview';
+    var DB_VERSION = 1;
+    var STORE      = 'recordings';
+
+    function open() {
+        return new Promise(function(resolve, reject) {
+            if (db) { resolve(db); return; }
+            var req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = function(e) {
+                var d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE)) {
+                    var store = d.createObjectStore(STORE, { keyPath: 'id' });
+                    store.createIndex('cardId', 'cardId', { unique: false });
+                }
+            };
+            req.onsuccess = function(e) { db = e.target.result; resolve(db); };
+            req.onerror   = function(e) { reject(e); };
+        });
+    }
+
+    function save(record) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).put(record);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function getByCardId(cardId) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx    = db.transaction(STORE, 'readonly');
+                var index = tx.objectStore(STORE).index('cardId');
+                var req   = index.getAll(cardId);
+                req.onsuccess = function() { resolve(req.result || []); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    function remove(id) {
+        return open().then(function(db) {
+            return new Promise(function(resolve, reject) {
+                var tx  = db.transaction(STORE, 'readwrite');
+                var req = tx.objectStore(STORE).delete(id);
+                req.onsuccess = function() { resolve(); };
+                req.onerror   = function(e) { reject(e); };
+            });
+        });
+    }
+
+    return { save: save, getByCardId: getByCardId, remove: remove };
 })();
 
 // 画像ファイルを保存して即時反映
@@ -2893,23 +3122,26 @@ function renderScenarioTabs() {
         });
         tab.addEventListener('dragend', function() {
             tab.classList.remove('dragging');
-            document.querySelectorAll('.scenario-tab').forEach(function(t){ t.classList.remove('drag-over'); });
+            scenarioDragClearIndicators();
             scenarioDragSrc = null;
         });
         tab.addEventListener('dragover', function(e) {
             e.preventDefault();
             if (!scenarioDragSrc || scenarioDragSrc === s.id) return;
-            tab.classList.add('drag-over');
+            var zone = dragGetZone(e, tab);
+            scenarioDragClearIndicators();
+            if (zone === 'swap') tab.classList.add('drop-swap-target');
+            else if (zone === 'insert-before') tab.classList.add('drop-insert-before');
+            else tab.classList.add('drop-insert-after');
+            tab.dataset.dropZone = zone;
             e.dataTransfer.dropEffect = 'move';
-        });
-        tab.addEventListener('dragleave', function() {
-            tab.classList.remove('drag-over');
         });
         tab.addEventListener('drop', function(e) {
             e.preventDefault();
-            tab.classList.remove('drag-over');
+            var zone = tab.dataset.dropZone || 'swap';
+            scenarioDragClearIndicators();
             if (!scenarioDragSrc || scenarioDragSrc === s.id) return;
-            reorderScenarios(scenarioDragSrc, s.id);
+            reorderScenarios(scenarioDragSrc, s.id, zone);
         });
 
         var key = document.createElement('span');
@@ -2983,12 +3215,24 @@ function addScenario() {
     updateGrid();
 }
 
-function reorderScenarios(srcId, targetId) {
+function scenarioDragClearIndicators() {
+    document.querySelectorAll('.scenario-tab.drop-swap-target, .scenario-tab.drop-insert-before, .scenario-tab.drop-insert-after')
+        .forEach(function(el) { el.classList.remove('drop-swap-target', 'drop-insert-before', 'drop-insert-after'); });
+}
+
+function reorderScenarios(srcId, targetId, zone) {
     var srcIdx = scenarios.findIndex(function(s){ return s.id === srcId; });
     var tgtIdx = scenarios.findIndex(function(s){ return s.id === targetId; });
     if (srcIdx === -1 || tgtIdx === -1 || srcIdx === tgtIdx) return;
-    var moved = scenarios.splice(srcIdx, 1)[0];
-    scenarios.splice(tgtIdx, 0, moved);
+
+    if (zone === 'swap' || !zone) {
+        var tmp = scenarios[srcIdx]; scenarios[srcIdx] = scenarios[tgtIdx]; scenarios[tgtIdx] = tmp;
+    } else {
+        var moved = scenarios.splice(srcIdx, 1)[0];
+        var insertAt = (zone === 'insert-before') ? tgtIdx : tgtIdx + 1;
+        if (srcIdx < insertAt) insertAt--;
+        scenarios.splice(insertAt, 0, moved);
+    }
     saveScenarios();
     renderScenarioTabs();
 }
@@ -3016,6 +3260,10 @@ function getCurrentGridData() {
             content: c ? c.value : ''
         };
         if (item.dataset.mediaId) entry.mediaId = item.dataset.mediaId;
+        // [NEW] itvId（録音・アップロード音声のキー）も同様に永続化する
+        if (item.dataset.itvId) entry.itvId = item.dataset.itvId;
+        // [NEW] 朗読音声ソース設定（speech / recorded / uploaded）
+        if (item.dataset.audioSource) entry.audioSource = item.dataset.audioSource;
         result.push(entry);
     });
     return result;
@@ -3142,6 +3390,8 @@ function updateGrid() {
     grid.classList.toggle('single-card-mode', rows === 1 && cols === 1);
     renderGrid(data, total);
     applyCardRatio();
+    // [MOD] 録音・アップロード済みマークを全モードで更新する
+    if (typeof itvMarkRecordedCards === 'function') itvMarkRecordedCards();
 }
 
 function renderGrid(data, total) {
@@ -3184,6 +3434,11 @@ function createItem(index, d) {
     item.className     = 'grid-item';
     item.draggable     = true;
     item.dataset.index = index;
+
+    // [NEW] itvId（録音・アップロード音声のキー）をカードデータから復元（永続化）
+    if (d.itvId) item.dataset.itvId = d.itvId;
+    // [NEW] 朗読音声ソース設定を復元（デフォルトはspeech = Web Speech）
+    item.dataset.audioSource = d.audioSource || 'speech';
 
     var handle = document.createElement('div');
     handle.className = 'drag-handle';
@@ -3473,13 +3728,54 @@ function showOverlay(title, text, cardItem) {
     // [NEW] カードに画像が登録されていればオーバーレイ内にも表示（紙芝居モード対応）
     overlayShowMediaForCard(editCardItem);
 
-    // [NEW] 録音モード：カードIDを特定して履歴表示
-    if (appMode === 'interview' && editCardItem) {
+    // [MOD] 録音履歴は全モードで表示する（録音モード専用だった制限を撤廃）
+    if (editCardItem) {
         var cardId = itvGetCardId(editCardItem);
         itvRenderHistory(cardId);
     } else {
         itvHideHistory();
     }
+
+    // [NEW] 音声ソース選択UIを現在のカードの設定に同期
+    overlaySyncAudioSourceUI(editCardItem);
+}
+
+// [NEW] カードの音声ソース設定（speech/recorded/uploaded）をラジオボタンに反映
+function overlaySyncAudioSourceUI(cardItem) {
+    var row = document.getElementById('audio-source-row');
+    if (!row) return;
+    var src = cardItem ? (cardItem.dataset.audioSource || 'speech') : 'speech';
+    var radios = row.querySelectorAll('input[name="audioSource"]');
+    radios.forEach(function(r) { r.checked = (r.value === src); });
+}
+
+// [NEW] 音声ソース設定を変更してカードデータに保存
+function overlaySetAudioSource(value) {
+    if (!editCardItem) return;
+    editCardItem.dataset.audioSource = value;
+    saveCurrentGridDataWithIndicator();
+}
+
+// [NEW] アップロードボタン押下 → ファイル選択ダイアログを開く
+function overlayUploadAudio() {
+    var input = document.getElementById('overlay-audio-upload-input');
+    if (input) input.click();
+}
+
+// [NEW] アップロードされた音声ファイルを保存
+function overlayHandleAudioUpload(e) {
+    var file = e.target.files[0];
+    if (!file || !editCardItem) return;
+    var cardId = itvGetCardId(editCardItem);
+    uploadSaveAudioFile(cardId, file).then(function() {
+        showToast('📁 音声ファイルをアップロードしました');
+        // アップロードしたら自動的に「アップロード」を音声ソースに選択
+        editCardItem.dataset.audioSource = 'uploaded';
+        overlaySyncAudioSourceUI(editCardItem);
+        saveCurrentGridDataWithIndicator();
+        itvMarkRecordedCards();
+    });
+    e.target.value = '';
 }
 
 // [NEW] カードに紐づく画像をオーバーレイ内に表示する
@@ -3728,28 +4024,84 @@ function handleDragStart(e) {
     dragSrcEl = this;
     e.dataTransfer.effectAllowed = 'move';
 }
+
+// [NEW] ドラッグ中のマウス位置から「スワップ」か「挿入（前/後）」かを判定する
+// カード幅を左20%/中央60%/右20%に分け、端に寄せるほど挿入予告に切り替わる
+function dragGetZone(e, targetEl) {
+    var rect = targetEl.getBoundingClientRect();
+    var relX = (e.clientX - rect.left) / rect.width;
+    if (relX < 0.2)  return 'insert-before';
+    if (relX > 0.8)  return 'insert-after';
+    return 'swap';
+}
+
+function dragClearIndicators() {
+    document.querySelectorAll('.grid-item.drop-swap-target, .grid-item.drop-insert-before, .grid-item.drop-insert-after')
+        .forEach(function(el) {
+            el.classList.remove('drop-swap-target', 'drop-insert-before', 'drop-insert-after');
+        });
+}
+
 function handleDragOver(e) {
     // [MOD] ファイル（画像）のドラッグは、カード並び替え用ハンドラでは処理しない
     if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) return;
     if (e.preventDefault) e.preventDefault();
+
+    // [NEW] ドラッグ中のゾーンに応じて予告表示を切り替える
+    if (dragSrcEl && dragSrcEl !== this) {
+        var zone = dragGetZone(e, this);
+        dragClearIndicators();
+        if (zone === 'swap') {
+            this.classList.add('drop-swap-target');
+        } else if (zone === 'insert-before') {
+            this.classList.add('drop-insert-before');
+        } else {
+            this.classList.add('drop-insert-after');
+        }
+        this.dataset.dropZone = zone;
+    }
     return false;
 }
+
 function handleDrop(e) {
     // [MOD] ファイル（画像）のドロップは、専用のmedia drop処理に委ねる
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) return;
     if (e.stopPropagation) e.stopPropagation();
     if (appMode === 'view') return false;
+
+    var zone = this.dataset.dropZone || 'swap';
+    dragClearIndicators();
+
     if (dragSrcEl !== this) {
         var data = getCurrentGridData();
         var from = parseInt(dragSrcEl.dataset.index, 10);
         var to   = parseInt(this.dataset.index, 10);
-        var tmp  = data[from]; data[from] = data[to]; data[to] = tmp;
+
+        if (zone === 'swap') {
+            // 既存の挙動：2枚を入れ替える
+            var tmp = data[from]; data[from] = data[to]; data[to] = tmp;
+        } else {
+            // [NEW] 挿入：dragSrcElを抜き出し、目的の位置（前/後）に差し込み、間のカードを1つずつシフトする
+            var moved = data.splice(from, 1)[0];
+            var insertAt = (zone === 'insert-before') ? to : to + 1;
+            // 抜き出しによってインデックスがズレた分を補正
+            if (from < insertAt) insertAt--;
+            data.splice(insertAt, 0, moved);
+        }
+
         renderGrid(data);
         saveCurrentGridDataWithIndicator();
     }
     return false;
 }
-function handleDragEnd() { this.classList.remove('dragging'); }
+
+function handleDragEnd() {
+    this.classList.remove('dragging');
+    dragClearIndicators();
+}
+
+// [NEW] カード外にドロップされた場合でも予告表示が残らないようにする保険
+document.addEventListener('dragend', function() { dragClearIndicators(); });
 
 // ===== CONTROLS =====
 function bindControls() {
@@ -4503,6 +4855,12 @@ function speechPlay() {
         window.itvStopRecording();
         return;
     }
+    // [NEW] 録音モード以外で、音声ソースが「録音」または「アップロード」に設定されている場合はそちらを再生する
+    if (appMode !== 'interview' && editCardItem) {
+        var src = editCardItem.dataset.audioSource || 'speech';
+        if (src === 'recorded') { overlayPlayRecordedAudio(); return; }
+        if (src === 'uploaded') { overlayPlayUploadedAudio(); return; }
+    }
     if (!('speechSynthesis' in window)) { alert('このブラウザはWeb Speech APIに対応していません'); return; }
     if (speechState === 'paused') { window.speechSynthesis.resume(); speechState = 'playing'; speechUpdateUI(); return; }
     clearSpeechHighlight();
@@ -4513,6 +4871,39 @@ function speechPlay() {
 } else {
     speechSpeak((title ? title + '。' : '') + text);
 }
+}
+
+// [NEW] 録音した音声の中で最新のものを再生（音声ソース＝録音 の場合）
+function overlayPlayRecordedAudio() {
+    if (!editCardItem) return;
+    var cardId = itvGetCardId(editCardItem);
+    itvDB.getByCardId(cardId).then(function(records) {
+        if (!records || records.length === 0) {
+            showToast('録音された音声がありません');
+            return;
+        }
+        var latest = records.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); })[0];
+        var url = URL.createObjectURL(latest.blob);
+        var audio = new Audio(url);
+        audio.play();
+        audio.onended = function() { URL.revokeObjectURL(url); };
+    });
+}
+
+// [NEW] アップロードされた音声を再生（音声ソース＝アップロード の場合）
+function overlayPlayUploadedAudio() {
+    if (!editCardItem) return;
+    var cardId = itvGetCardId(editCardItem);
+    uploadDB.get(cardId).then(function(record) {
+        if (!record || !record.blob) {
+            showToast('アップロードされた音声がありません');
+            return;
+        }
+        var url = URL.createObjectURL(record.blob);
+        var audio = new Audio(url);
+        audio.play();
+        audio.onended = function() { URL.revokeObjectURL(url); };
+    });
 }
 
 // 文をクリック → その文から朗読開始（クリックロックON時は無効）
@@ -4730,65 +5121,6 @@ setTimer(60);
 // ===== [NEW] INTERVIEW MODE =====
 // IndexedDB wrapper
 
-var itvDB = (function() {
-    var db = null;
-    var DB_NAME    = 'qcard_interview';
-    var DB_VERSION = 1;
-    var STORE      = 'recordings';
-
-    function open() {
-        return new Promise(function(resolve, reject) {
-            if (db) { resolve(db); return; }
-            var req = indexedDB.open(DB_NAME, DB_VERSION);
-            req.onupgradeneeded = function(e) {
-                var d = e.target.result;
-                if (!d.objectStoreNames.contains(STORE)) {
-                    var store = d.createObjectStore(STORE, { keyPath: 'id' });
-                    store.createIndex('cardId', 'cardId', { unique: false });
-                }
-            };
-            req.onsuccess = function(e) { db = e.target.result; resolve(db); };
-            req.onerror   = function(e) { reject(e); };
-        });
-    }
-
-    function save(record) {
-        return open().then(function(db) {
-            return new Promise(function(resolve, reject) {
-                var tx  = db.transaction(STORE, 'readwrite');
-                var req = tx.objectStore(STORE).put(record);
-                req.onsuccess = function() { resolve(); };
-                req.onerror   = function(e) { reject(e); };
-            });
-        });
-    }
-
-    function getByCardId(cardId) {
-        return open().then(function(db) {
-            return new Promise(function(resolve, reject) {
-                var tx    = db.transaction(STORE, 'readonly');
-                var index = tx.objectStore(STORE).index('cardId');
-                var req   = index.getAll(cardId);
-                req.onsuccess = function() { resolve(req.result || []); };
-                req.onerror   = function(e) { reject(e); };
-            });
-        });
-    }
-
-    function remove(id) {
-        return open().then(function(db) {
-            return new Promise(function(resolve, reject) {
-                var tx  = db.transaction(STORE, 'readwrite');
-                var req = tx.objectStore(STORE).delete(id);
-                req.onsuccess = function() { resolve(); };
-                req.onerror   = function(e) { reject(e); };
-            });
-        });
-    }
-
-    return { save: save, getByCardId: getByCardId, remove: remove };
-})();
-
 // 状態変数
 var itvRecording   = false;
 var itvMediaRec    = null;
@@ -4819,6 +5151,8 @@ async function itvInitMic() {
 function itvGetCardId(cardItem) {
     if (!cardItem.dataset.itvId) {
         cardItem.dataset.itvId = crypto.randomUUID();
+        // [NEW] 生成したIDを即座にカードデータへ永続化（シナリオ切替・リロードで消えないように）
+        saveCurrentGridDataWithIndicator();
     }
     return cardItem.dataset.itvId;
 }
@@ -4868,7 +5202,8 @@ itvMediaRec.onstop = function() {
     itvDB.save(record).then(function() {
         itvRenderHistory(itvCardId);
         showToast('💾 録音を保存しました');
-        if (appMode === 'interview') { itvMarkRecordedCards(); }
+        // [MOD] 全モードでマークを更新する（録音モード限定の制限を撤廃）
+        itvMarkRecordedCards();
     });
 
     itvRecording = false;
@@ -5102,13 +5437,13 @@ function itvMarkRecordedCards() {
     var items = Array.from(document.querySelectorAll('.grid-item'));
     items.forEach(function(el) {
         var cardId = el.dataset.itvId;
-        if (!cardId) { el.classList.remove('itv-has-rec'); return; }
+        if (!cardId) { el.classList.remove('itv-has-rec', 'itv-has-upload'); return; }
         itvDB.getByCardId(cardId).then(function(recs) {
-            if (recs && recs.length > 0) {
-                el.classList.add('itv-has-rec');
-            } else {
-                el.classList.remove('itv-has-rec');
-            }
+            el.classList.toggle('itv-has-rec', !!(recs && recs.length > 0));
+        });
+        // [NEW] アップロード音声の有無も同時にマーク
+        uploadDB.get(cardId).then(function(record) {
+            el.classList.toggle('itv-has-upload', !!(record && record.blob));
         });
     });
 }
@@ -5496,6 +5831,48 @@ function rdHighlightMobSentence() {
 }
 
 // カード内の指定文節インデックスから読み上げ（文単位で一時停止再開を実現）
+// [NEW] 朗読モード：録音/アップロード音声をカード単位で再生し、終わったら次のカードへ進む
+function rdPlayCardAudio(cardEl, source) {
+    if (!cardEl) { rdIdx++; rdSpeakFromSentence(0); return; }
+    var cardId = itvGetCardId(cardEl);
+
+    var getAudio = (source === 'recorded')
+        ? itvDB.getByCardId(cardId).then(function(records) {
+            if (!records || records.length === 0) return null;
+            return records.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); })[0].blob;
+        })
+        : uploadDB.get(cardId).then(function(record) { return record ? record.blob : null; });
+
+    getAudio.then(function(blob) {
+        if (!rdRunning || rdPaused) return; // 再生待ち中に停止された場合
+        if (!blob) {
+            // 音声が無ければスキップして次のカードへ
+            rdIdx++;
+            rdSpeakFromSentence(0);
+            return;
+        }
+        var url = URL.createObjectURL(blob);
+        var audio = new Audio(url);
+        rdCurrentCardAudio = audio; // 停止操作のために保持
+        audio.play();
+        audio.onended = function() {
+            URL.revokeObjectURL(url);
+            rdCurrentCardAudio = null;
+            if (!rdRunning || rdPaused) return;
+            rdIdx++;
+            rdSpeakFromSentence(0);
+        };
+        audio.onerror = function() {
+            URL.revokeObjectURL(url);
+            rdCurrentCardAudio = null;
+            if (!rdRunning || rdPaused) return;
+            rdIdx++;
+            rdSpeakFromSentence(0);
+        };
+    });
+}
+var rdCurrentCardAudio = null; // 朗読モードで再生中の音声（録音/アップロード）。停止時に止める対象
+
 function rdSpeakFromSentence(startSentIdx) {
     if (!rdRunning || rdPaused) return;
     var d = rdItems[rdIdx];
@@ -5503,6 +5880,14 @@ function rdSpeakFromSentence(startSentIdx) {
 
     rdHighlight(rdIdx);
     rdUpdateUI();
+
+    // [NEW] このカードの音声ソースが「録音」または「アップロード」の場合、
+    // 文節読み上げではなく音声ファイルをそのまま1回再生し、終わったら次のカードへ進む
+    var cardAudioSource = d.el ? (d.el.dataset.audioSource || 'speech') : 'speech';
+    if (cardAudioSource !== 'speech') {
+        rdPlayCardAudio(d.el, cardAudioSource);
+        return;
+    }
 
     // カードが変わった場合は文節を再分割
     var fullText = (rdReadTitle && d.title ? d.title + '。' : '') + (d.content || '');
@@ -5642,12 +6027,16 @@ window.rdPause = function() {
     if (!rdRunning || rdPaused) return;
     rdPaused = true;
     window.speechSynthesis.cancel();
+    // [NEW] 録音/アップロード音声の再生中ならそれも一時停止
+    if (rdCurrentCardAudio) { rdCurrentCardAudio.pause(); }
     // rdSentIdxはonboundaryで更新済みの値を保持。今読んでいた文の頭から再開できる。
     rdUpdateUI();
 };
 
 window.rdStop = function() {
     window.speechSynthesis && window.speechSynthesis.cancel();
+    // [NEW] 録音/アップロード音声の再生中なら止める
+    if (rdCurrentCardAudio) { rdCurrentCardAudio.pause(); rdCurrentCardAudio = null; }
     rdRunning   = false;
     rdPaused    = false;
     rdIdx       = 0;
@@ -5755,8 +6144,8 @@ window.itvDeleteRec = function(id, cardId, e) {
     itvDB.remove(id).then(function() {
         itvRenderHistory(cardId);
         showToast('録音を削除しました');
-        // 削除後にドットを再評価
-        if (appMode === 'interview') { itvMarkRecordedCards(); }
+        // [MOD] 削除後にドットを再評価（全モード対応）
+        itvMarkRecordedCards();
     });
 };
 
