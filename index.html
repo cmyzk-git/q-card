@@ -2093,11 +2093,19 @@
     .mode-btn.study-mode-btn { }
     .mode-btn.active.study-mode-btn { color: #34d399; border-color: rgba(52,211,153,0.4); }
 
+    #study-bar {
+        display: none;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 5px 12px;
+        flex-shrink: 0;
+    }
     #study-controls {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-left: 6px;
+        flex-wrap: wrap;
+        margin-left: 0;
     }
     #study-audio-toggle-label {
         display: flex;
@@ -2351,6 +2359,32 @@
         <button class="mob-drawer-btn" onclick="showTutorial(); mobDrawerClose()">? ヘルプ</button>
         <button class="mob-drawer-btn danger" onclick="mobDrawerClose(); clearAll()">🗑 全消去</button>
     </div>
+
+    <!-- 学習モード専用セクション（学習モード時のみ表示） -->
+    <div class="mob-drawer-section" id="mob-study-section" style="display:none">
+        <div class="mob-drawer-label">🧠 学習</div>
+        <button class="mob-drawer-btn" onclick="studyShuffle(); mobDrawerClose()">🔀 シャッフル</button>
+        <button class="mob-drawer-btn" onclick="studyUnshuffle(); mobDrawerClose()">↩ 元の順番に戻す</button>
+        <div class="mob-drawer-row" style="margin-top:4px">
+            <label style="font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="mob-study-audio-toggle" style="accent-color:#34d399;"
+                    onchange="studyAudioToggleChange(this.checked); document.getElementById('study-audio-toggle') && (document.getElementById('study-audio-toggle').checked=this.checked)">
+                <span>クリック時に音声を再生</span>
+            </label>
+        </div>
+        <button class="mob-drawer-btn danger" style="margin-top:6px" onclick="mobDrawerClose(); studyResetAll()">🗑 学習記録をリセット</button>
+    </div>
+
+    <!-- シナリオ名編集セクション（編集モード時） -->
+    <div class="mob-drawer-section" id="mob-scenario-rename-section">
+        <div class="mob-drawer-label">シナリオ名を編集</div>
+        <div class="mob-drawer-row">
+            <input type="text" id="mob-scenario-name-input"
+                style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:0.8rem;"
+                placeholder="シナリオ名">
+            <button class="mob-drawer-btn" style="margin-bottom:0;white-space:nowrap;padding:7px 12px;" onclick="mobRenameScenario()">保存</button>
+        </div>
+    </div>
 </div>
 
 <!-- SEARCH BAR -->
@@ -2438,14 +2472,18 @@
     <span class="scenario-bar-label">シナリオ</span>
     <div id="scenario-tabs"></div>
     <button class="scenario-add-btn" id="scenario-add-btn" onclick="addScenario()">＋ 追加</button>
-    <!-- 学習モード用コントロール -->
-    <div id="study-controls" style="display:none">
+</div>
+
+<!-- 学習モード専用ツールバー（シナリオバーとは独立した行） -->
+<div id="study-bar" style="display:none">
+    <div id="study-controls">
         <button class="top-btn" id="shuffle-btn" onclick="studyShuffle()" title="シャッフル">🔀 シャッフル</button>
         <button class="top-btn" id="unshuffle-btn" onclick="studyUnshuffle()" title="元の順番に戻す" style="display:none">↩ 元順</button>
         <label id="study-audio-toggle-label" title="クリック時に音声を再生する">
             <input type="checkbox" id="study-audio-toggle" onchange="studyAudioToggleChange(this.checked)">
             <span>音声再生</span>
         </label>
+        <button class="top-btn danger" onclick="studyResetAll()" title="学習記録をリセット">🗑 記録リセット</button>
         <span id="study-progress-text" class="study-progress-text"></span>
     </div>
 </div>
@@ -3120,7 +3158,7 @@ function setAppMode(mode) {
     document.getElementById('interviewModeBtn').classList.remove('active');
     document.getElementById('studyModeBtn').classList.remove('active');
 
-    var studyCtrl = document.getElementById('study-controls');
+    var studyBar2 = document.getElementById('study-bar');
     var studyBar  = document.getElementById('study-progress-bar-wrap');
 
     if (mode === 'view') {
@@ -3129,14 +3167,14 @@ function setAppMode(mode) {
         showToast('👁 閲覧モード');
         itvClearRecMarks();
         if (typeof rdStop === "function") rdStop();
-        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar2) studyBar2.style.display = 'none';
         if (studyBar)  studyBar.style.display  = 'none';
     } else if (mode === 'reading') {
         document.body.classList.add('reading-mode');
         document.getElementById('readingModeBtn').classList.add('active');
         showToast('📖 朗読モード — カードをクリック（またはタップ）して開始');
         itvClearRecMarks();
-        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar2) studyBar2.style.display = 'none';
         if (studyBar)  studyBar.style.display  = 'none';
         setTimeout(function() {
             if (typeof rdBuildItems === 'function') { rdBuildItems(null); rdUpdateUI(); }
@@ -3147,7 +3185,7 @@ function setAppMode(mode) {
         showToast('🎤 録音練習モード');
         itvMarkRecordedCards();
         if (typeof rdStop === "function") rdStop();
-        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar2) studyBar2.style.display = 'none';
         if (studyBar)  studyBar.style.display  = 'none';
     } else if (mode === 'study') {
         document.body.classList.add('study-mode');
@@ -3155,7 +3193,7 @@ function setAppMode(mode) {
         showToast('🧠 学習モード');
         itvClearRecMarks();
         if (typeof rdStop === "function") rdStop();
-        if (studyCtrl) studyCtrl.style.display = 'flex';
+        if (studyBar2) studyBar2.style.display = 'block';
         if (studyBar)  studyBar.style.display  = 'flex';
         setTimeout(function() { studyStart(); }, 50);
     } else {
@@ -3164,7 +3202,7 @@ function setAppMode(mode) {
         showToast('✏️ 編集モード');
         itvClearRecMarks();
         if (typeof rdStop === "function") rdStop();
-        if (studyCtrl) studyCtrl.style.display = 'none';
+        if (studyBar2) studyBar2.style.display = 'none';
         if (studyBar)  studyBar.style.display  = 'none';
     }
     // モバイルスワイプUIの編集可否・対象データを再同期
@@ -3444,6 +3482,7 @@ function switchScenario(id) {
     applySearch(currentQuery);
     hideOverlay();
     showToast('シナリオ: ' + (active ? active.name : ''));
+    document.dispatchEvent(new CustomEvent('scenarioChanged'));
 }
 
 function addScenario() {
@@ -3454,6 +3493,8 @@ function addScenario() {
     saveScenarios();
     renderScenarioTabs();
     updateGrid();
+    document.dispatchEvent(new CustomEvent('scenarioChanged'));
+    if (typeof mSync === 'function') setTimeout(mSync, 0);
 }
 
 function scenarioDragClearIndicators() {
@@ -6457,20 +6498,32 @@ function mobSetView(v) {
 // グリッドモードでカードをタップ → スワイプUIに切替してそのカードを表示
 grid.addEventListener('click', function(e) {
     if (!document.body.classList.contains('mob-grid')) return;
-    if (appMode !== 'view' && appMode !== 'reading') return;
     var item = e.target.closest('.grid-item');
     if (!item) return;
-    var items = Array.from(grid.querySelectorAll('.grid-item')).filter(function(el){
-        var t = el.querySelector('.title-input');
-        var c = el.querySelector('.content-textarea');
-        return (t && t.value.trim()) || (c && c.value.trim());
-    });
-    var idx = items.indexOf(item);
-    if (idx < 0) return;
-    mobSetView('swipe');
-    setTimeout(function() {
-        if (typeof mSetIdx === 'function') mSetIdx(idx);
-    }, 50);
+
+    if (appMode === 'edit') {
+        // 編集モード：空カード含む全カードを対象にスワイプUIで開く
+        var allItems = Array.from(grid.querySelectorAll('.grid-item'));
+        var idx = allItems.indexOf(item);
+        if (idx < 0) return;
+        mobSetView('swipe');
+        setTimeout(function() {
+            if (typeof mSetIdx === 'function') mSetIdx(idx);
+        }, 50);
+    } else if (appMode === 'view' || appMode === 'reading') {
+        // 閲覧・朗読モード：非空カードのみ対象
+        var items = Array.from(grid.querySelectorAll('.grid-item')).filter(function(el){
+            var t = el.querySelector('.title-input');
+            var c = el.querySelector('.content-textarea');
+            return (t && t.value.trim()) || (c && c.value.trim());
+        });
+        var vidx = items.indexOf(item);
+        if (vidx < 0) return;
+        mobSetView('swipe');
+        setTimeout(function() {
+            if (typeof mSetIdx === 'function') mSetIdx(vidx);
+        }, 50);
+    }
 }, true);
 
 window.addEventListener('load', function() {
@@ -6495,6 +6548,18 @@ function mobDrawerOpen() {
     var icon = document.getElementById('themeIcon');
     if (icon) document.getElementById('mobThemeIcon').textContent = icon.textContent;
 
+    // 学習モードセクションの表示切替
+    var studySection = document.getElementById('mob-study-section');
+    if (studySection) studySection.style.display = (appMode === 'study') ? 'block' : 'none';
+    // 音声トグル同期
+    var mobAudioToggle = document.getElementById('mob-study-audio-toggle');
+    var audioToggle    = document.getElementById('study-audio-toggle');
+    if (mobAudioToggle && audioToggle) mobAudioToggle.checked = audioToggle.checked;
+    // シナリオ名を入力欄に反映
+    var active = getActive();
+    var nameInput = document.getElementById('mob-scenario-name-input');
+    if (nameInput && active) nameInput.value = active.name || '';
+
     document.getElementById('mob-drawer').classList.add('open');
     document.getElementById('mob-drawer-overlay').classList.add('open');
 }
@@ -6502,6 +6567,20 @@ function mobDrawerOpen() {
 function mobDrawerClose() {
     document.getElementById('mob-drawer').classList.remove('open');
     document.getElementById('mob-drawer-overlay').classList.remove('open');
+}
+
+function mobRenameScenario() {
+    var nameInput = document.getElementById('mob-scenario-name-input');
+    if (!nameInput) return;
+    var newName = nameInput.value.trim();
+    if (!newName) return;
+    var active = getActive();
+    if (!active) return;
+    active.name = newName;
+    saveScenarios();
+    renderScenarioTabs();
+    mobDrawerClose();
+    showToast('シナリオ名を変更しました');
 }
 
 // ドロワー内スライダー → PC側に反映
@@ -6925,6 +7004,17 @@ window.addEventListener('load', function() {
             item.appendChild(badge);
         });
     }
+
+    // --- 記録リセット ---
+    window.studyResetAll = function() {
+        if (!confirm('このシナリオの学習記録をすべてリセットしますか？')) return;
+        var active = getActive();
+        if (!active) return;
+        active.data.forEach(function(d) { d.studyStatus = ''; });
+        saveScenarios();
+        studyStart();
+        showToast('学習記録をリセットしました');
+    };
 
     // カードクリック（表面）でフリップ
     document.getElementById('study-card-face').addEventListener('click', studyFlip);
