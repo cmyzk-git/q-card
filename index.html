@@ -2446,7 +2446,7 @@
                     <span id="themeLabel">ライト</span>
                 </div>
                 <!-- [NEW] グリッド画像表示トグル -->
-                <div class="top-btn" id="mediaToggleBtn" onclick="toggleMediaDisplay()">🖼 画像: ON</div>
+                <div class="top-btn" id="mediaToggleBtn" onclick="toggleMediaDisplay()">🖼 画像: OFF</div>
             </div>
             <div class="ds-row">
                 <div class="top-btn" id="timerToggleBtn" onclick="toggleTimerWidget()" style="width:100%;text-align:center;">⏱ タイマー表示切替</div>
@@ -2709,33 +2709,81 @@
 <div id="data-modal-backdrop" onclick="closeDataModal()" style="display:none;position:fixed;inset:0;background:rgba(4,8,18,0.7);z-index:1000;backdrop-filter:blur(4px);"></div>
 <div id="data-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;width:380px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,0.6);overflow:hidden;">
     <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:800;color:var(--text);letter-spacing:0.06em;">データ管理</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:800;color:var(--text);letter-spacing:0.06em;">QCF データ管理</span>
+            <span style="font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--accent2);border:1px solid var(--accent2);border-radius:4px;padding:1px 6px;opacity:0.7;">Qcard Format</span>
+        </div>
         <span onclick="closeDataModal()" style="cursor:pointer;color:var(--text-dim);font-size:1.2rem;line-height:1;padding:2px 6px;transition:color 0.15s;border-radius:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-dim)'">×</span>
     </div>
-    <div style="padding:16px 18px;">
-        <!-- このシナリオ -->
+    <div style="padding:16px 18px;overflow-y:auto;max-height:80vh;">
+        <!-- シナリオ設定 -->
         <div style="margin-bottom:18px;">
-            <div style="font-size:0.62rem;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">このシナリオ</div>
-            <div style="display:flex;gap:6px;">
-                <button class="modal-btn" onclick="copyToClipboard('active')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
-                <button class="modal-btn" onclick="exportActiveJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
-                <button class="modal-btn" onclick="exportActiveCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
-                <!-- [NEW] Markdown出力 -->
-                <button class="modal-btn" onclick="exportActiveMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
+            <div style="font-size:0.62rem;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">シナリオ設定</div>
+            <div id="qcf-meta-panel" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;width:72px;flex-shrink:0;">タイトル</label>
+                    <input id="qcf-meta-title" type="text" placeholder="シナリオタイトル" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.72rem;padding:4px 8px;outline:none;font-family:'Noto Sans JP',sans-serif;" oninput="qcfMetaSave()">
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;width:72px;flex-shrink:0;">作成者</label>
+                    <input id="qcf-meta-author" type="text" placeholder="名前" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.72rem;padding:4px 8px;outline:none;font-family:'Noto Sans JP',sans-serif;" oninput="qcfMetaSave()">
+                </div>
+                <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <label style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;width:72px;flex-shrink:0;padding-top:5px;">説明</label>
+                    <textarea id="qcf-meta-desc" rows="2" placeholder="このシナリオの説明..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.72rem;padding:4px 8px;outline:none;resize:none;font-family:'Noto Sans JP',sans-serif;line-height:1.5;" oninput="qcfMetaSave()"></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <label style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;white-space:nowrap;">バージョン</label>
+                        <input id="qcf-meta-version" type="text" placeholder="1.0" style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.72rem;padding:4px 8px;outline:none;font-family:'DM Mono',monospace;" oninput="qcfMetaSave()">
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <label style="font-size:0.62rem;color:var(--text-dim);font-family:'DM Mono',monospace;white-space:nowrap;">ライセンス</label>
+                        <select id="qcf-meta-license" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.68rem;padding:3px 4px;cursor:pointer;" onchange="qcfMetaSave()">
+                            <option value="private">private</option>
+                            <option value="share">share</option>
+                            <option value="commercial">commercial</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:3px;">
+                    <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-dim);font-family:'DM Mono',monospace;">
+                        <span>ID:</span><span id="qcf-meta-id" style="color:var(--text-muted);word-break:break-all;"></span>
+                    </div>
+                    <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-dim);font-family:'DM Mono',monospace;">
+                        <span style="white-space:nowrap;">作成:</span><span id="qcf-meta-created" style="color:var(--text-muted);"></span>
+                    </div>
+                    <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-dim);font-family:'DM Mono',monospace;">
+                        <span style="white-space:nowrap;">更新:</span><span id="qcf-meta-updated" style="color:var(--success);font-weight:700;"></span>
+                    </div>
+                    <div style="display:flex;gap:6px;font-size:0.6rem;color:var(--text-dim);font-family:'DM Mono',monospace;">
+                        <span style="white-space:nowrap;">カード数:</span><span id="qcf-meta-cards" style="color:var(--accent);font-weight:700;"></span>
+                    </div>
+                </div>
             </div>
-            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">ファイル名：シナリオ名-列数-日時</div>
+        </div>
+        <!-- このシナリオ -->
+        <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:0.62rem;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">このシナリオ</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="modal-btn" onclick="copyToClipboard('active')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
+                <button class="modal-btn" onclick="exportActiveJSON()" title="QCFでダウンロード"><span class="modal-btn-icon">📦</span><span>QCF</span></button>
+                <button class="modal-btn" onclick="exportActiveCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
+                <button class="modal-btn" onclick="exportActiveMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
+                <button class="modal-btn" onclick="qcfShareComingSoon()" title="QCF共有（準備中）" style="border-color:var(--accent2);color:var(--accent2);opacity:0.75;"><span class="modal-btn-icon">🔗</span><span>Share</span></button>
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">ファイル名：シナリオ名-列数-日時.qcf</div>
         </div>
         <!-- 全シナリオ -->
         <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
             <div style="font-size:0.62rem;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">全シナリオ</div>
             <div style="display:flex;gap:6px;">
                 <button class="modal-btn" onclick="copyToClipboard('all')" title="テキストとしてコピー"><span class="modal-btn-icon">📋</span><span>コピー</span></button>
-                <button class="modal-btn" onclick="exportJSON()" title="JSONでダウンロード"><span class="modal-btn-icon">{ }</span><span>JSON</span></button>
+                <button class="modal-btn" onclick="exportJSON()" title="QCFでダウンロード（全シナリオ）"><span class="modal-btn-icon">📦</span><span>QCF</span></button>
                 <button class="modal-btn" onclick="exportCSV()" title="CSVでダウンロード"><span class="modal-btn-icon">⊞</span><span>CSV</span></button>
-                <!-- [NEW] Markdown出力（全シナリオ） -->
                 <button class="modal-btn" onclick="exportMD()" title="Markdownでダウンロード"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
-            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">JSON：完全バックアップ（推奨）／CSV：表計算ソフト対応／MD：閲覧・共有向け</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">QCF：完全バックアップ（推奨）／CSV：表計算ソフト対応／MD：閲覧・共有向け</div>
         </div>
         <!-- [NEW] 録音データ -->
         <div style="margin-bottom:18px;border-top:1px solid var(--border);padding-top:14px;">
@@ -2754,7 +2802,7 @@
                 <button class="modal-btn" onclick="document.getElementById('importFileMD').click()"><span class="modal-btn-icon">M↓</span><span>MD</span></button>
             </div>
             <div style="font-size:0.65rem;color:var(--text-dim);margin-top:7px;line-height:1.6;">⚠️ 現在のデータは上書きされます</div>
-            <input type="file" id="importFileJSON" accept=".json" style="display:none" onchange="importJSON(event)">
+            <input type="file" id="importFileJSON" accept=".json,.qcf" style="display:none" onchange="importJSON(event)">
             <input type="file" id="importFileCSV"  accept=".csv"  style="display:none" onchange="importCSV(event)">
             <input type="file" id="importFileMD"   accept=".md,.markdown,.txt" style="display:none" onchange="importMD(event)">
             <!-- [NEW] 貼り付けで読み込み（JSON / Markdownを自動判定） -->
@@ -3092,7 +3140,7 @@ function overlayMediaRemove() {
 }
 
 // [NEW] グリッド画像表示トグル
-var mediaDisplayOn = (localStorage.getItem('kp_media_display') !== '0'); // デフォルトON
+var mediaDisplayOn = (localStorage.getItem('kp_media_display') === '1'); // デフォルトOFF
 function toggleMediaDisplay() {
     mediaDisplayOn = !mediaDisplayOn;
     localStorage.setItem('kp_media_display', mediaDisplayOn ? '1' : '0');
@@ -3221,21 +3269,44 @@ function loadScenarios() {
     } catch(e) {}
     if (scenarios.length === 0) {
         scenarios = [
-            { id: uid(), name: 'シナリオ1', cols: 4, rows: 4, data: [] },
-            { id: uid(), name: 'シナリオ2', cols: 4, rows: 4, data: [] },
-            { id: uid(), name: 'シナリオ3', cols: 4, rows: 4, data: [] },
-            { id: uid(), name: 'シナリオ4', cols: 4, rows: 4, data: [] },
+            newScenarioMeta('シナリオ1'),
+            newScenarioMeta('シナリオ2'),
+            newScenarioMeta('シナリオ3'),
+            newScenarioMeta('シナリオ4'),
         ];
         activeScenarioId = scenarios[0].id;
     }
-    // 旧データ移行：cols フィールドがなければ補完
+    // ─── マイグレーション ───
+    var migrated = false;
     scenarios.forEach(function(s) {
-    if (!s.cols) s.cols = 4;
-    if (!s.rows) s.rows = 4;
-});
+        // cols/rows 補完
+        if (!s.cols) { s.cols = 4; migrated = true; }
+        if (!s.rows) { s.rows = 4; migrated = true; }
+        // UUID化：数値IDや旧形式を scn_ プレフィックス付き UUID へ
+        if (!s.id || typeof s.id === 'number' || !String(s.id).startsWith('scn_')) {
+            s.id = scnUid(); migrated = true;
+        }
+        // QCFメタデータ補完
+        if (!s.meta) {
+            s.meta = { title: s.name || '', author: '', description: '', version: '1.0', license: 'private', authorId: '' };
+            migrated = true;
+        }
+        // タイムスタンプ補完
+        if (!s.createdAt) { s.createdAt = nowMs(); migrated = true; }
+        if (!s.updatedAt) { s.updatedAt = nowMs(); migrated = true; }
+        // カードID補完
+        (s.data || []).forEach(function(card) {
+            if (!card.id || !String(card.id).startsWith('card_')) {
+                card.id = cardUid(); migrated = true;
+            }
+            if (!card.createdAt) { card.createdAt = nowMs(); migrated = true; }
+            if (!card.updatedAt) { card.updatedAt = nowMs(); migrated = true; }
+        });
+    });
     if (!scenarios.find(function(s){ return s.id === activeScenarioId; })) {
         activeScenarioId = scenarios[0] ? scenarios[0].id : null;
     }
+    if (migrated) saveScenarios();
 }
 
 function getActiveCols() {
@@ -3255,7 +3326,41 @@ function saveScenarios() {
     }));
 }
 
-function uid() { return crypto.randomUUID(); }
+function uid()      { return crypto.randomUUID(); }
+function scnUid()   { return 'scn_'  + crypto.randomUUID(); }
+function cardUid()  { return 'card_' + crypto.randomUUID(); }
+
+function nowMs() { return Date.now(); }
+
+function fmtTs(ms) {
+    if (!ms) return '—';
+    var d = new Date(ms);
+    var pad = function(n, w) { return String(n).padStart(w || 2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+         + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+         + '.' + pad(d.getMilliseconds(), 3);
+}
+
+function newScenarioMeta(name) {
+    var now = nowMs();
+    return {
+        id:          scnUid(),
+        name:        name,
+        cols:        4,
+        rows:        4,
+        data:        [],
+        meta: {
+            title:       name,
+            author:      '',
+            description: '',
+            version:     '1.0',
+            license:     'private',
+            authorId:    ''
+        },
+        createdAt:   now,
+        updatedAt:   now
+    };
+}
 function getActive() { return scenarios.find(function(s){ return s.id === activeScenarioId; }); }
 
 // ===== THEME =====
@@ -3487,7 +3592,9 @@ function switchScenario(id) {
 
 function addScenario() {
     saveCurrentGridData();
-    var s = { id: uid(), name: 'シナリオ' + (scenarios.length + 1), cols: getActiveCols(), rows: getActiveRows(), data: [] };
+    var s = newScenarioMeta('シナリオ' + (scenarios.length + 1));
+    s.cols = getActiveCols();
+    s.rows = getActiveRows();
     scenarios.push(s);
     activeScenarioId = s.id;
     saveScenarios();
@@ -3533,21 +3640,27 @@ function deleteScenario(id) {
 function getCurrentGridData() {
     var items = grid.querySelectorAll('.grid-item');
     var result = [];
+    var active = getActive();
     items.forEach(function(item, index) {
         var t = item.querySelector('.title-input');
         var c = item.querySelector('.content-textarea');
-        // [MOD] mediaId（画像のIndexedDBキー）をデータに保持し続ける（カードに画像が登録済みの場合）
+        var prev = active && active.data[index];
+        var now  = nowMs();
+        var prevTitle   = prev ? (prev.title   || '') : '';
+        var prevContent = prev ? (prev.content || '') : '';
+        var curTitle    = t ? t.value : '';
+        var curContent  = c ? c.value : '';
+        var changed = (curTitle !== prevTitle || curContent !== prevContent);
         var entry = {
-            title:   t ? t.value : '',
-            content: c ? c.value : ''
+            id:        (prev && prev.id)        || cardUid(),
+            title:     curTitle,
+            content:   curContent,
+            createdAt: (prev && prev.createdAt) || now,
+            updatedAt: changed ? now : ((prev && prev.updatedAt) || now)
         };
         if (item.dataset.mediaId) entry.mediaId = item.dataset.mediaId;
-        // [NEW] itvId（録音・アップロード音声のキー）も同様に永続化する
-        if (item.dataset.itvId) entry.itvId = item.dataset.itvId;
-        // [NEW] 朗読音声ソース設定（speech / recorded / uploaded）
+        if (item.dataset.itvId)   entry.itvId   = item.dataset.itvId;
         if (item.dataset.audioSource) entry.audioSource = item.dataset.audioSource;
-        // [STUDY] 学習ステータス
-        var active = getActive();
         if (active && active.data[index] && active.data[index].studyStatus) {
             entry.studyStatus = active.data[index].studyStatus;
         }
@@ -3559,7 +3672,8 @@ function getCurrentGridData() {
 function saveCurrentGridData() {
     var active = getActive();
     if (!active) return;
-    active.data = getCurrentGridData();
+    active.data      = getCurrentGridData();
+    active.updatedAt = nowMs();
     saveScenarios();
 }
 
@@ -4541,11 +4655,43 @@ function clearAll() {
     hideOverlay();
 }
 
-// ===== DATA MODAL =====
+// ===== QCF METADATA PANEL =====
+function qcfMetaLoad() {
+    var a = getActive(); if (!a) return;
+    if (!a.meta) a.meta = { title: a.name, author: '', description: '', version: '1.0', license: 'private', authorId: '' };
+    document.getElementById('qcf-meta-title').value   = a.meta.title       || a.name || '';
+    document.getElementById('qcf-meta-author').value  = a.meta.author      || '';
+    document.getElementById('qcf-meta-desc').value    = a.meta.description || '';
+    document.getElementById('qcf-meta-version').value = a.meta.version     || '1.0';
+    document.getElementById('qcf-meta-license').value = a.meta.license     || 'private';
+    document.getElementById('qcf-meta-id').textContent      = a.id;
+    document.getElementById('qcf-meta-created').textContent = fmtTs(a.createdAt);
+    document.getElementById('qcf-meta-updated').textContent = fmtTs(a.updatedAt);
+    document.getElementById('qcf-meta-cards').textContent   = (a.data || []).length + ' 枚';
+}
+
+function qcfMetaSave() {
+    var a = getActive(); if (!a) return;
+    if (!a.meta) a.meta = {};
+    a.meta.title       = document.getElementById('qcf-meta-title').value;
+    a.meta.author      = document.getElementById('qcf-meta-author').value;
+    a.meta.description = document.getElementById('qcf-meta-desc').value;
+    a.meta.version     = document.getElementById('qcf-meta-version').value;
+    a.meta.license     = document.getElementById('qcf-meta-license').value;
+    a.updatedAt        = nowMs();
+    document.getElementById('qcf-meta-updated').textContent = fmtTs(a.updatedAt);
+    saveScenarios();
+}
+
+function qcfShareComingSoon() {
+    showToast('🔗 QCF共有機能は開発中です');
+}
+
 function openDataModal() {
     saveCurrentGridData();
     document.getElementById('data-modal-backdrop').style.display = 'block';
     document.getElementById('data-modal').style.display          = 'block';
+    qcfMetaLoad();
     // [NEW] 録音件数を表示
     itvCountActiveScenarioRecs().then(function(count) {
         var el = document.getElementById('itv-modal-count');
@@ -4559,10 +4705,22 @@ function closeDataModal() {
     document.getElementById('data-modal').style.display          = 'none';
 }
 
+function qcfEnvelope(scenarioList, activeId) {
+    return {
+        _qcf:      true,
+        version:   '1.0',
+        exportedAt: nowMs(),
+        exportedAtHuman: fmtTs(nowMs()),
+        activeId:  activeId,
+        scenarios: scenarioList
+    };
+}
+
 function exportJSON() {
-    var blob = new Blob([JSON.stringify({ scenarios: scenarios, activeId: activeScenarioId }, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, 'qcard_' + today() + '.json');
-    showToast('JSONをエクスポート'); closeDataModal();
+    var payload = qcfEnvelope(scenarios, activeScenarioId);
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, 'qcard_' + today() + '.qcf');
+    showToast('QCFをエクスポート（全シナリオ）'); closeDataModal();
 }
 
 function exportCSV() {
@@ -4596,9 +4754,10 @@ function activeFilename(ext) {
 
 function exportActiveJSON() {
     var a = getActive(); if (!a) return;
-    var blob = new Blob([JSON.stringify({ scenarios: [a], activeId: a.id }, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, activeFilename('json'));
-    showToast('このシナリオをJSON保存'); closeDataModal();
+    var payload = qcfEnvelope([a], a.id);
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, activeFilename('qcf'));
+    showToast('QCFをエクスポート（このシナリオ）'); closeDataModal();
 }
 
 function exportActiveCSV() {
@@ -4697,18 +4856,18 @@ function importFromPaste() {
     var text = ta ? ta.value.trim() : '';
     if (!text) { showToast('テキストが貼り付けられていません'); return; }
 
-    // ① JSONとして解釈を試みる
+    // ① JSON/QCFとして解釈を試みる
     try {
         var parsed = JSON.parse(text);
         if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
-            scenarios = parsed.scenarios;
-            scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
-            activeScenarioId = parsed.activeId || scenarios[0].id;
+            var normalized = normalizeImportedScenarios(parsed);
+            scenarios        = normalized.scenarios;
+            activeScenarioId = normalized.activeId || scenarios[0].id;
             saveScenarios(); renderScenarioTabs();
             document.getElementById('colsInput').value = getActiveCols();
             updateGrid();
             ta.value = '';
-            showToast('JSON（貼り付け）をインポート'); closeDataModal();
+            showToast((parsed._qcf ? 'QCF' : 'JSON') + '（貼り付け）をインポート'); closeDataModal();
             return;
         }
     } catch (e) {
@@ -4750,21 +4909,68 @@ function importMD(e) {
     e.target.value = '';
 }
 
+function normalizeImportedScenarios(parsed) {
+    // QCFエンベロープ対応（_qcf:true のラッパー）
+    var raw = (parsed._qcf && parsed.scenarios) ? parsed : parsed;
+    var list   = raw.scenarios || [];
+    var active = raw.activeId  || null;
+    var now    = nowMs();
+    // マイグレーション：旧JSON/QCF双方に対応
+    list.forEach(function(s) {
+        if (!s.cols)      s.cols = 4;
+        if (!s.rows)      s.rows = 4;
+        if (!s.id || !String(s.id).startsWith('scn_')) s.id = scnUid();
+        if (!s.meta)      s.meta = { title: s.name || '', author: '', description: '', version: '1.0', license: 'private', authorId: '' };
+        if (!s.createdAt) s.createdAt = now;
+        if (!s.updatedAt) s.updatedAt = now;
+        (s.data || []).forEach(function(card) {
+            if (!card.id || !String(card.id).startsWith('card_')) card.id = cardUid();
+            if (!card.createdAt) card.createdAt = now;
+            if (!card.updatedAt) card.updatedAt = now;
+        });
+    });
+    return { scenarios: list, activeId: active };
+}
+
 function importJSON(e) {
     var file = e.target.files[0]; if (!file) return;
     readFile(file, function(text) {
         try {
             var parsed = JSON.parse(text);
-            if (!parsed.scenarios || !Array.isArray(parsed.scenarios)) { showToast('JSONの形式が不正です'); return; }
-            parsed.scenarios.forEach(function(s) { if (!s.cols) s.cols = 4; });
+            if (!parsed.scenarios || !Array.isArray(parsed.scenarios)) { showToast('QCF/JSONの形式が不正です'); return; }
+
+            var isQcf = !!parsed._qcf;
+            var normalized = normalizeImportedScenarios(parsed);
+            var list   = normalized.scenarios;
+            var active = normalized.activeId;
 
             var bd = document.createElement('div');
             bd.style.cssText = 'position:fixed;inset:0;background:rgba(4,8,18,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)';
+
+            // QCFメタデータサマリー表示
+            var metaSummary = '';
+            if (isQcf && list.length === 1 && list[0].meta) {
+                var m = list[0].meta;
+                metaSummary =
+                    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:0.7rem;line-height:1.8;">' +
+                    (m.title   ? '<div><span style="color:var(--text-dim);font-family:\'DM Mono\',monospace;font-size:0.6rem;">タイトル　</span><span style="color:var(--text);font-weight:600;">' + m.title + '</span></div>' : '') +
+                    (m.author  ? '<div><span style="color:var(--text-dim);font-family:\'DM Mono\',monospace;font-size:0.6rem;">作成者　　</span><span style="color:var(--text-muted);">' + m.author + '</span></div>' : '') +
+                    (m.description ? '<div><span style="color:var(--text-dim);font-family:\'DM Mono\',monospace;font-size:0.6rem;">説明　　　</span><span style="color:var(--text-muted);">' + m.description + '</span></div>' : '') +
+                    '<div><span style="color:var(--text-dim);font-family:\'DM Mono\',monospace;font-size:0.6rem;">カード数　</span><span style="color:var(--accent);font-weight:700;">' + (list[0].data || []).length + ' 枚</span></div>' +
+                    (list[0].updatedAt ? '<div><span style="color:var(--text-dim);font-family:\'DM Mono\',monospace;font-size:0.6rem;">更新日時　</span><span style="color:var(--success);">' + fmtTs(list[0].updatedAt) + '</span></div>' : '') +
+                    '</div>';
+            }
+
             bd.innerHTML =
-                '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px 32px;width:360px;max-width:92vw;box-shadow:0 32px 80px rgba(0,0,0,0.8)">' +
-                '<div style="font-family:\'DM Mono\',monospace;font-size:0.62rem;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">インポート</div>' +
-                '<div style="font-size:0.82rem;color:var(--text);font-weight:600;margin-bottom:6px">' + file.name + '</div>' +
-                '<div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:22px">読み込み方法を選択してください。</div>' +
+                '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px 32px;width:380px;max-width:92vw;box-shadow:0 32px 80px rgba(0,0,0,0.8)">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+                '<span style="font-family:\'DM Mono\',monospace;font-size:0.62rem;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;">' + (isQcf ? 'QCFインポート' : 'JSONインポート') + '</span>' +
+                (isQcf ? '<span style="font-family:\'DM Mono\',monospace;font-size:0.56rem;color:var(--accent2);border:1px solid var(--accent2);border-radius:3px;padding:1px 5px;">Qcard Format</span>' : '') +
+                '</div>' +
+                '<div style="font-size:0.82rem;color:var(--text);font-weight:600;margin-bottom:4px">' + file.name + '</div>' +
+                '<div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:14px">シナリオ ' + list.length + ' 件</div>' +
+                metaSummary +
+                '<div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:18px">読み込み方法を選択してください。</div>' +
                 '<div style="display:flex;flex-direction:column;gap:8px">' +
                 '<button id="imp-add"     style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:10px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;text-align:left">➕ 追加　<span style="color:var(--text-muted);font-weight:400">既存シナリオを保持して追加</span></button>' +
                 '<button id="imp-replace" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:10px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;text-align:left">🔄 全置換　<span style="color:var(--danger);font-weight:400">既存データを消去して置き換え</span></button>' +
@@ -4772,34 +4978,32 @@ function importJSON(e) {
                 '</div></div>';
 
             document.body.appendChild(bd);
-
             function close() { document.body.removeChild(bd); }
-
             document.getElementById('imp-cancel').onclick = close;
 
             document.getElementById('imp-add').onclick = function() {
-                parsed.scenarios.forEach(function(s) {
+                list.forEach(function(s) {
                     var ex = scenarios.find(function(x){ return x.name === s.name; });
-                    if (ex) { ex.data = s.data; ex.cols = s.cols; }
+                    if (ex) { ex.data = s.data; ex.cols = s.cols; ex.meta = s.meta || ex.meta; ex.updatedAt = s.updatedAt || nowMs(); }
                     else    { scenarios.push(s); }
                 });
                 saveScenarios(); renderScenarioTabs();
                 document.getElementById('colsInput').value = getActiveCols();
                 updateGrid();
-                showToast('追加インポート完了'); close(); closeDataModal();
+                showToast('インポート完了（追加）'); close(); closeDataModal();
             };
 
             document.getElementById('imp-replace').onclick = function() {
                 if (!confirm('既存のデータをすべて消去して置き換えます。よろしいですか？')) return;
-                scenarios = parsed.scenarios;
-                activeScenarioId = parsed.activeId || scenarios[0].id;
+                scenarios        = list;
+                activeScenarioId = active || scenarios[0].id;
                 saveScenarios(); renderScenarioTabs();
                 document.getElementById('colsInput').value = getActiveCols();
                 updateGrid();
-                showToast('全置換インポート完了'); close(); closeDataModal();
+                showToast('インポート完了（全置換）'); close(); closeDataModal();
             };
 
-        } catch(err) { showToast('JSON読み込み失敗'); }
+        } catch(err) { showToast('読み込み失敗：' + err.message); }
     });
     e.target.value = '';
 }
